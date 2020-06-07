@@ -7,18 +7,19 @@
 
 //Sourcemod Includes
 #include <sourcemod>
-#include <sourcemod-misc>
-#include <tf2-weapons>
+#include <misc-sm>
+#include <misc-tf>
+#include <tf2-items>
 
 //Globals
-bool g_Setting_Raygun[MAX_ENTITY_LIMIT];
+bool g_Setting_Raygun[4096];
 
 Handle g_hSDKWeaponGetDamage;
 Handle g_hSDKRocketSetDamage;
 
 public Plugin myinfo = 
 {
-	name = "[TF2-Weapons] Attribute :: Raygun", 
+	name = "[TF2-Items] Attribute :: Raygun", 
 	author = "Drixevel", 
 	description = "An attribute which enables Raygun effects.", 
 	version = "1.0.0", 
@@ -40,13 +41,13 @@ public void OnPluginStart()
 
 public void OnConfigsExecuted()
 {
-	if (TF2Weapons_AllowAttributeRegisters())
-		TF2Weapons_OnRegisterAttributesPost();
+	if (TF2Items_AllowAttributeRegisters())
+		TF2Items_OnRegisterAttributesPost();
 }
 
-public void TF2Weapons_OnRegisterAttributesPost()
+public void TF2Items_OnRegisterAttributesPost()
 {
-	if (!TF2Weapons_RegisterAttribute(ATTRIBUTE_NAME, OnAttributeAction))
+	if (!TF2Items_RegisterAttribute(ATTRIBUTE_NAME, OnAttributeAction))
 		LogError("Error while registering the '%s' attribute.", ATTRIBUTE_NAME);
 }
 

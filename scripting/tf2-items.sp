@@ -1,15 +1,22 @@
+/*****************************/
 //Pragma
 #pragma semicolon 1
 #pragma newdecls required
 
+/*****************************/
 //Defines
+#define PLUGIN_NAME "[TF2] Items"
+#define PLUGIN_DESCRIPTION "A simple and effective TF2 items plugin which allows for items, weapons and cosmetic customizations."
+#define PLUGIN_VERSION "1.0.5"
+
 #define EF_NODRAW 32
 
 #define ARRAY_SIZE	2
 #define ARRAY_ITEM	0
 #define ARRAY_FLAGS	1
 
-//Sourcemod Includes
+/*****************************/
+//Includes
 #include <sourcemod>
 
 #include <misc-sm>
@@ -20,48 +27,54 @@
 #include <tf2attributes>
 #include <tf2-items>
 
+/*****************************/
 //ConVars
-ConVar convar_WeaponMenuOnSpawn;
+ConVar convar_SpawnMenu;
 ConVar convar_DisableMenu;
 
+/*****************************/
 //Forwards
 Handle g_Forward_OnRegisterAttributes;
 Handle g_Forward_OnRegisterAttributesPost;
-Handle g_Forward_OnRegisterWeaponConfig;
-Handle g_Forward_OnRegisterWeaponSetting;
-Handle g_Forward_OnRegisterWeaponSettingStr;
-Handle g_Forward_OnRegisterWeaponConfigPost;
+Handle g_Forward_OnRegisterItemConfig;
+Handle g_Forward_OnRegisterItemSetting;
+Handle g_Forward_OnRegisterItemSettingStr;
+Handle g_Forward_OnRegisterItemConfigPost;
 
+/*****************************/
 //Globals
 bool g_Late;
 bool g_IsCustom[MAX_ENTITY_LIMIT + 1];
 
-ArrayList g_WeaponsList;
-StringMap g_WeaponDescription;
-StringMap g_WeaponFlags;
-StringMap g_WeaponSteamIDs;
-StringMap g_WeaponClasses;
-StringMap g_WeaponSlot;
-StringMap g_WeaponEntity;
-StringMap g_WeaponIndex;
-StringMap g_WeaponSize;
-StringMap g_WeaponSkin;
-StringMap g_WeaponRenderMode;
-StringMap g_WeaponRenderFx;
-StringMap g_WeaponRenderColor;
-StringMap g_WeaponViewmodel;
-StringMap g_WeaponWorldmodel;
-StringMap g_WeaponQuality;
-StringMap g_WeaponLevel;
-StringMap g_WeaponKillIcon;
-StringMap g_WeaponLogName;
-StringMap g_WeaponClip;
-StringMap g_WeaponAmmo;
-StringMap g_WeaponMetal;
-StringMap g_WeaponParticle;
-StringMap g_WeaponParticleTime;
-StringMap g_WeaponAttributesData;	//Handle Hell
-StringMap g_WeaponSoundsData;		//Handle Hell
+ArrayList g_ItemsList;
+StringMap g_ItemDescription;
+StringMap g_ItemAuthors;	//Handle Hell
+StringMap g_ItemItemFlags;
+StringMap g_ItemFlags;
+StringMap g_ItemSteamIDs;
+StringMap g_ItemClasses;
+StringMap g_ItemSlot;
+StringMap g_ItemEntity;
+StringMap g_ItemIndex;
+StringMap g_ItemSize;
+StringMap g_ItemSkin;
+StringMap g_ItemRenderMode;
+StringMap g_ItemRenderFx;
+StringMap g_ItemRenderColor;
+StringMap g_ItemViewmodel;
+StringMap g_ItemWorldmodel;
+StringMap g_ItemQuality;
+StringMap g_ItemLevel;
+StringMap g_ItemKillIcon;
+StringMap g_ItemLogName;
+StringMap g_ItemClip;
+StringMap g_ItemAmmo;
+StringMap g_ItemMetal;
+StringMap g_ItemParticle;
+StringMap g_ItemParticleTime;
+StringMap g_ItemPreAttributesData;	//Handle Hell
+StringMap g_ItemAttributesData;	//Handle Hell
+StringMap g_ItemSoundsData;		//Handle Hell
 
 //Attributes Data
 ArrayList g_AttributesList;
@@ -79,12 +92,14 @@ StringMap g_hPlayerInfo;
 ArrayList g_hPlayerArray;
 ArrayList g_hGlobalSettings;
 
+/*****************************/
+//Plugin Info
 public Plugin myinfo = 
 {
-	name = "[TF2] Items", 
+	name = PLUGIN_NAME, 
 	author = "Drixevel", 
-	description = "A simple and effective TF2 items plugin which allows for weapon and cosmetic customizations.", 
-	version = "1.0.0", 
+	description = PLUGIN_DESCRIPTION, 
+	version = PLUGIN_VERSION, 
 	url = "https://drixevel.dev/"
 };
 
@@ -94,24 +109,28 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 
 	CreateNative("TF2Items_AllowAttributeRegisters", Native_AllowAttributeRegisters);
 	CreateNative("TF2Items_RegisterAttribute", Native_RegisterAttribute);
-	CreateNative("TF2Items_GiveWeapon", Native_GiveWeapon);
-	CreateNative("TF2Items_IsCustom", Native_IsCustom);
+	
+	CreateNative("TF2Items_GiveItem", Native_GiveItem);
+	CreateNative("TF2Items_IsItemCustom", Native_IsItemCustom);
+	
 	CreateNative("TF2Items_RefillMag", Native_RefillMag);
 	CreateNative("TF2Items_RefillAmmo", Native_RefillAmmo);
 	
 	CreateNative("TF2Items_EquipWearable", Native_EquipWearable);
 	CreateNative("TF2Items_EquipViewmodel", Native_EquipViewmodel);
 
-	CreateNative("TF2Items_GetWeaponKeyInt", Native_GetWeaponKeyInt);
-	CreateNative("TF2Items_GetWeaponKeyFloat", Native_GetWeaponKeyFloat);
-	CreateNative("TF2Items_GetWeaponKeyString", Native_GetWeaponKeyString);
+	CreateNative("TF2Items_GetItemKeyInt", Native_GetItemKeyInt);
+	CreateNative("TF2Items_GetItemKeyFloat", Native_GetItemKeyFloat);
+	CreateNative("TF2Items_GetItemKeyString", Native_GetItemKeyString);
 
 	g_Forward_OnRegisterAttributes = CreateGlobalForward("TF2Items_OnRegisterAttributes", ET_Event);
 	g_Forward_OnRegisterAttributesPost = CreateGlobalForward("TF2Items_OnRegisterAttributesPost", ET_Ignore);
-	g_Forward_OnRegisterWeaponConfig = CreateGlobalForward("TF2Items_OnRegisterWeaponConfig", ET_Event, Param_String, Param_String, Param_Cell);
-	g_Forward_OnRegisterWeaponSetting = CreateGlobalForward("TF2Items_OnRegisterWeaponSetting", ET_Event, Param_String, Param_String, Param_Any);
-	g_Forward_OnRegisterWeaponSettingStr = CreateGlobalForward("TF2Items_OnRegisterWeaponSettingStr", ET_Event, Param_String, Param_String, Param_String);
-	g_Forward_OnRegisterWeaponConfigPost = CreateGlobalForward("TF2Items_OnRegisterWeaponConfigPost", ET_Ignore, Param_String, Param_String, Param_Cell);
+	
+	g_Forward_OnRegisterItemConfig = CreateGlobalForward("TF2Items_OnRegisterItemConfig", ET_Event, Param_String, Param_String, Param_Cell);
+	g_Forward_OnRegisterItemConfigPost = CreateGlobalForward("TF2Items_OnRegisterItemConfigPost", ET_Ignore, Param_String, Param_String, Param_Cell);
+	
+	g_Forward_OnRegisterItemSetting = CreateGlobalForward("TF2Items_OnRegisterItemSetting", ET_Event, Param_String, Param_String, Param_Any);
+	g_Forward_OnRegisterItemSettingStr = CreateGlobalForward("TF2Items_OnRegisterItemSettingStr", ET_Event, Param_String, Param_String, Param_String);
 
 	g_Late = late;
 	return APLRes_Success;
@@ -119,10 +138,13 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 
 public void OnPluginStart()
 {
-	CSetPrefix("{crimson}[Weapons]");
+	LoadTranslations("common.phrases");
+	LoadTranslations("tf2-items.phrases");
 	
-	convar_WeaponMenuOnSpawn = CreateConVar("sm_tf2_items_spawnmenu", "0", "Whether to display the weapons menu on spawn for players.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-	convar_DisableMenu = CreateConVar("sm_tf2_items_disablemenu", "1", "Disables the built-in menu for non-admins.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	CSetPrefix("{crimson}[Items]");
+	
+	convar_SpawnMenu = CreateConVar("sm_tf2_items_spawnmenu", "0", "Whether to display the items menu on spawn for players.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	convar_DisableMenu = CreateConVar("sm_tf2_items_disablemenu", "1", "Disables the built-in items menu for non-admins.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	AutoExecConfig();
 
 	HookEvent("player_spawn", Event_OnPlayerSpawn);
@@ -130,51 +152,59 @@ public void OnPluginStart()
 	HookEvent("player_death", Event_OnPlayerDeath, EventHookMode_Pre);
 	AddNormalSoundHook(OnSoundPlay);
 
-	g_WeaponsList = new ArrayList(ByteCountToCells(MAX_WEAPON_NAME_LENGTH));
-	g_WeaponDescription = new StringMap();
-	g_WeaponFlags = new StringMap();
-	g_WeaponSteamIDs = new StringMap();
-	g_WeaponClasses = new StringMap();
-	g_WeaponSlot = new StringMap();
-	g_WeaponEntity = new StringMap();
-	g_WeaponIndex = new StringMap();
-	g_WeaponSize = new StringMap();
-	g_WeaponSkin = new StringMap();
-	g_WeaponRenderMode = new StringMap();
-	g_WeaponRenderFx = new StringMap();
-	g_WeaponRenderColor = new StringMap();
-	g_WeaponViewmodel = new StringMap();
-	g_WeaponWorldmodel = new StringMap();
-	g_WeaponQuality = new StringMap();
-	g_WeaponLevel = new StringMap();
-	g_WeaponKillIcon = new StringMap();
-	g_WeaponLogName = new StringMap();
-	g_WeaponClip = new StringMap();
-	g_WeaponAmmo = new StringMap();
-	g_WeaponMetal = new StringMap();
-	g_WeaponParticle = new StringMap();
-	g_WeaponParticleTime = new StringMap();
-	g_WeaponAttributesData = new StringMap();
-	g_WeaponSoundsData = new StringMap();
+	g_ItemsList = new ArrayList(ByteCountToCells(MAX_ITEM_NAME_LENGTH));
+	g_ItemDescription = new StringMap();
+	g_ItemAuthors = new StringMap();
+	g_ItemItemFlags = new StringMap();
+	g_ItemFlags = new StringMap();
+	g_ItemSteamIDs = new StringMap();
+	g_ItemClasses = new StringMap();
+	g_ItemSlot = new StringMap();
+	g_ItemEntity = new StringMap();
+	g_ItemIndex = new StringMap();
+	g_ItemSize = new StringMap();
+	g_ItemSkin = new StringMap();
+	g_ItemRenderMode = new StringMap();
+	g_ItemRenderFx = new StringMap();
+	g_ItemRenderColor = new StringMap();
+	g_ItemViewmodel = new StringMap();
+	g_ItemWorldmodel = new StringMap();
+	g_ItemQuality = new StringMap();
+	g_ItemLevel = new StringMap();
+	g_ItemKillIcon = new StringMap();
+	g_ItemLogName = new StringMap();
+	g_ItemClip = new StringMap();
+	g_ItemAmmo = new StringMap();
+	g_ItemMetal = new StringMap();
+	g_ItemParticle = new StringMap();
+	g_ItemParticleTime = new StringMap();
+	g_ItemPreAttributesData = new StringMap();
+	g_ItemAttributesData = new StringMap();
+	g_ItemSoundsData = new StringMap();
 
 	g_AttributesList = new ArrayList(ByteCountToCells(MAX_ATTRIBUTE_NAME_LENGTH));
 	g_Attributes_Calls = new StringMap();
 
-	RegConsoleCmd("sm_w", Command_Weapons);
-	RegConsoleCmd("sm_weapons", Command_Weapons);
-	RegConsoleCmd("sm_c", Command_Weapons);
-	RegConsoleCmd("sm_cws", Command_Weapons);
-	RegConsoleCmd("sm_customweapons", Command_Weapons);
-	RegConsoleCmd("sm_weapon", Command_Weapons);
-	RegConsoleCmd("sm_customweapon", Command_Weapons);
-	RegConsoleCmd("sm_giveweapon", Command_Weapons);
-
-	RegAdminCmd("sm_reloadweapons", Command_ReloadWeapons, ADMFLAG_ROOT);
-	RegAdminCmd("sm_rw", Command_ReloadWeapons, ADMFLAG_ROOT);
-	RegAdminCmd("sm_reloadattributes", Command_ReloadAttributes, ADMFLAG_ROOT);
+	RegConsoleCmd("sm_i", Command_Items);
+	RegConsoleCmd("sm_items", Command_Items);
+	RegConsoleCmd("sm_w", Command_Items);
+	RegConsoleCmd("sm_weapons", Command_Items);
+	RegConsoleCmd("sm_c", Command_Items);
+	RegConsoleCmd("sm_cws", Command_Items);
+	RegConsoleCmd("sm_customweapons", Command_Items);
+	RegConsoleCmd("sm_weapon", Command_Items);
+	RegConsoleCmd("sm_customweapon", Command_Items);
+	RegConsoleCmd("sm_giveweapon", Command_Items);
+	
+	RegAdminCmd("sm_rw", Command_ReloadItems, ADMFLAG_ROOT);
+	RegAdminCmd("sm_reloaditems", Command_ReloadItems, ADMFLAG_ROOT);
+	
 	RegAdminCmd("sm_ra", Command_ReloadAttributes, ADMFLAG_ROOT);
+	RegAdminCmd("sm_reloadattributes", Command_ReloadAttributes, ADMFLAG_ROOT);
 
-	RegAdminCmd("sm_createweapon", Command_CreateWeapon, ADMFLAG_ROOT);
+	RegAdminCmd("sm_create", Command_CreateItem, ADMFLAG_ROOT);
+	RegAdminCmd("sm_createitem", Command_CreateItem, ADMFLAG_ROOT);
+	RegAdminCmd("sm_createweapon", Command_CreateItem, ADMFLAG_ROOT);
 
 	Handle gamedata = LoadGameConfigFile("sm-tf2.games");
 
@@ -220,19 +250,18 @@ public void OnConfigsExecuted()
 		CallAttributeRegistrations();
 	}
 
-	ParseWeapons();
+	ParseItems();
 	ParseOverrides();
 
-	//debugging weapons faster
 	int drixevel = -1;
 	if ((drixevel = GetDrixevel()) > 0 && IsClientInGame(drixevel))
-		OpenWeaponsMenu(drixevel);
+		OpenItemsMenu(drixevel);
 }
 
-bool ParseWeapons()
+bool ParseItems()
 {
 	char sPath[PLATFORM_MAX_PATH];
-	BuildPath(Path_SM, sPath, sizeof(sPath), "configs/tf2-weapons");
+	BuildPath(Path_SM, sPath, sizeof(sPath), "configs/tf2-items");
 
 	if (!DirExists(sPath))
 	{
@@ -242,47 +271,50 @@ bool ParseWeapons()
 			LogError("Error while generating directory: %s", sPath);
 	}
 
-	g_WeaponsList.Clear();
-	g_WeaponDescription.Clear();
-	g_WeaponFlags.Clear();
-	g_WeaponSteamIDs.Clear();
-	g_WeaponClasses.Clear();
-	g_WeaponSlot.Clear();
-	g_WeaponEntity.Clear();
-	g_WeaponIndex.Clear();
-	g_WeaponSize.Clear();
-	g_WeaponSkin.Clear();
-	g_WeaponRenderMode.Clear();
-	g_WeaponRenderFx.Clear();
-	g_WeaponRenderColor.Clear();
-	g_WeaponViewmodel.Clear();
-	g_WeaponWorldmodel.Clear();
-	g_WeaponQuality.Clear();
-	g_WeaponLevel.Clear();
-	g_WeaponKillIcon.Clear();
-	g_WeaponLogName.Clear();
-	g_WeaponClip.Clear();
-	g_WeaponAmmo.Clear();
-	g_WeaponMetal.Clear();
-	g_WeaponParticle.Clear();
-	g_WeaponParticleTime.Clear();
-	g_WeaponAttributesData.Clear();
-	g_WeaponSoundsData.Clear();
+	g_ItemsList.Clear();
+	g_ItemDescription.Clear();
+	g_ItemAuthors.Clear();
+	g_ItemItemFlags.Clear();
+	g_ItemFlags.Clear();
+	g_ItemSteamIDs.Clear();
+	g_ItemClasses.Clear();
+	g_ItemSlot.Clear();
+	g_ItemEntity.Clear();
+	g_ItemIndex.Clear();
+	g_ItemSize.Clear();
+	g_ItemSkin.Clear();
+	g_ItemRenderMode.Clear();
+	g_ItemRenderFx.Clear();
+	g_ItemRenderColor.Clear();
+	g_ItemViewmodel.Clear();
+	g_ItemWorldmodel.Clear();
+	g_ItemQuality.Clear();
+	g_ItemLevel.Clear();
+	g_ItemKillIcon.Clear();
+	g_ItemLogName.Clear();
+	g_ItemClip.Clear();
+	g_ItemAmmo.Clear();
+	g_ItemMetal.Clear();
+	g_ItemParticle.Clear();
+	g_ItemParticleTime.Clear();
+	g_ItemPreAttributesData.Clear();
+	g_ItemAttributesData.Clear();
+	g_ItemSoundsData.Clear();
 
-	StrCat(sPath, sizeof(sPath), "/weapons");
+	StrCat(sPath, sizeof(sPath), "/items");
 
 	if (!DirExists(sPath))
 	{
 		CreateDirectory(sPath, 511);
 
 		if (!DirExists(sPath))
-			LogError("Error while generating directory for weapons directory: %s", sPath);
+			LogError("Error while generating directory for items directory: %s", sPath);
 	}
 
-	ParseWeaponsFolder(sPath);
+	ParseItemsFolder(sPath);
 }
 
-bool ParseWeaponsFolder(const char[] path)
+bool ParseItemsFolder(const char[] path)
 {
 	if (!DirExists(path, true))
 		return false;
@@ -307,7 +339,7 @@ bool ParseWeaponsFolder(const char[] path)
 					continue;
 				
 				Format(sFile, sizeof(sFile), "%s/%s", path, sFile);
-				ParseWeaponConfig(sFile);
+				ParseItemConfig(sFile);
 			}
 			case FileType_Directory:
 			{
@@ -315,7 +347,7 @@ bool ParseWeaponsFolder(const char[] path)
 					continue;
 				
 				Format(sFile, sizeof(sFile), "%s/%s", path, sFile);
-				ParseWeaponsFolder(sFile);
+				ParseItemsFolder(sFile);
 			}
 		}
 	}
@@ -324,9 +356,9 @@ bool ParseWeaponsFolder(const char[] path)
 	return true;
 }
 
-bool ParseWeaponConfig(const char[] file)
+bool ParseItemConfig(const char[] file)
 {
-	KeyValues kv = new KeyValues("weapon");
+	KeyValues kv = new KeyValues("item");
 
 	if (!kv.ImportFromFile(file))
 	{
@@ -342,7 +374,7 @@ bool ParseWeaponConfig(const char[] file)
 	}
 
 	//name
-	char sName[MAX_WEAPON_NAME_LENGTH];
+	char sName[MAX_ITEM_NAME_LENGTH];
 	kv.GetString("name", sName, sizeof(sName));
 
 	if (strlen(sName) == 0)
@@ -351,7 +383,7 @@ bool ParseWeaponConfig(const char[] file)
 		return false;
 	}
 
-	Call_StartForward(g_Forward_OnRegisterWeaponConfig);
+	Call_StartForward(g_Forward_OnRegisterItemConfig);
 	Call_PushString(sName);
 	Call_PushString(file);
 	Call_PushCell(kv);
@@ -359,7 +391,7 @@ bool ParseWeaponConfig(const char[] file)
 
 	if (kv == null)
 	{
-		LogError("Error while accessing '%s' weapon config: API killed the Settings handle.", sName);
+		LogError("Error while accessing '%s' item config: API killed the Settings handle.", sName);
 		return false;
 	}
 
@@ -369,30 +401,64 @@ bool ParseWeaponConfig(const char[] file)
 		return false;
 	}
 	
-	g_WeaponsList.PushString(sName);
+	g_ItemsList.PushString(sName);
 
 	//description
 	char sDescription[MAX_DESCRIPTION_LENGTH];
 	kv.GetString("description", sDescription, sizeof(sDescription));
-	g_WeaponDescription.SetString(sName, sDescription);
+	g_ItemDescription.SetString(sName, sDescription);
 	CallSettingsForwardStr(sName, "description", sDescription);
 
+	//authors
+	if (kv.JumpToKey("authors") && kv.GotoFirstSubKey(false))
+	{
+		ArrayList authors = new ArrayList(ByteCountToCells(MAX_NAME_LENGTH));
+		StringMap authorsdata = new StringMap();
+		
+		char sAuthor[MAX_NAME_LENGTH];
+		char sAuthorsData[64];
+		
+		do
+		{
+			kv.GetSectionName(sAuthor, sizeof(sAuthor));
+			kv.GetString(NULL_STRING, sAuthorsData, sizeof(sAuthorsData));
+
+			authors.PushString(sAuthor);
+			authorsdata.SetString(sAuthor, sAuthorsData);
+		}
+		while (kv.GotoNextKey(false));
+
+		g_ItemAuthors.SetValue(sName, authors);
+
+		char sAuthorsData2[MAX_ITEM_NAME_LENGTH + 12];
+		FormatEx(sAuthorsData2, sizeof(sAuthorsData2), "%s_data", sName);
+		g_ItemAuthors.SetValue(sAuthorsData2, authorsdata);
+
+		kv.Rewind();
+	}
+
+	//entity flags
+	char sItemFlags[256];
+	kv.GetString("itemflags", sItemFlags, sizeof(sItemFlags), "PRESERVE_ATTRIBUTES");
+	g_ItemItemFlags.SetString(sName, sItemFlags);
+	CallSettingsForwardStr(sName, "itemflags", sItemFlags);
+	
 	//flags
 	char sFlags[MAX_FLAGS_LENGTH];
 	kv.GetString("flags", sFlags, sizeof(sFlags));
-	g_WeaponFlags.SetString(sName, sFlags);
+	g_ItemFlags.SetString(sName, sFlags);
 	CallSettingsForwardStr(sName, "flags", sFlags);
 
-	//flags
+	//steamids
 	char sSteamIDs[2048];
 	kv.GetString("steamids", sSteamIDs, sizeof(sSteamIDs));
-	g_WeaponSteamIDs.SetString(sName, sSteamIDs);
+	g_ItemSteamIDs.SetString(sName, sSteamIDs);
 	CallSettingsForwardStr(sName, "steamids", sSteamIDs);
 
 	//classes
 	char sClasses[2048];
 	kv.GetString("classes", sClasses, sizeof(sClasses));
-	g_WeaponClasses.SetString(sName, sClasses);
+	g_ItemClasses.SetString(sName, sClasses);
 	CallSettingsForwardStr(sName, "classes", sClasses);
 
 	//slots
@@ -400,28 +466,28 @@ bool ParseWeaponConfig(const char[] file)
 	kv.GetString("slot", sSlot, sizeof(sSlot));
 	
 	int iSlot = IsStringNumeric(sSlot) ? StringToInt(sSlot) : GetSlotIDFromName(sSlot);
-	g_WeaponSlot.SetValue(sName, iSlot);
+	g_ItemSlot.SetValue(sName, iSlot);
 	CallSettingsForward(sName, "slot", iSlot);
 
 	//entity
 	char sEntity[MAX_ENTITY_CLASSNAME_LENGTH];
 	kv.GetString("entity", sEntity, sizeof(sEntity));
-	g_WeaponEntity.SetString(sName, sEntity);
+	g_ItemEntity.SetString(sName, sEntity);
 	CallSettingsForwardStr(sName, "entity", sEntity);
 
 	//index
 	int iIndex = kv.GetNum("index");
-	g_WeaponIndex.SetValue(sName, iIndex);
+	g_ItemIndex.SetValue(sName, iIndex);
 	CallSettingsForward(sName, "index", iIndex);
 
 	//size
 	float fSize = kv.GetFloat("size", 1.0);
-	g_WeaponSize.SetValue(sName, fSize);
+	g_ItemSize.SetValue(sName, fSize);
 	CallSettingsForward(sName, "size", fSize);
 
 	//skin
 	int iSkin = kv.GetNum("skin");
-	g_WeaponSkin.SetValue(sName, iSkin);
+	g_ItemSkin.SetValue(sName, iSkin);
 	CallSettingsForward(sName, "skin", iSkin);
 
 	//rendermode
@@ -429,7 +495,7 @@ bool ParseWeaponConfig(const char[] file)
 	kv.GetString("rendermode", sRenderMode, sizeof(sRenderMode));
 
 	RenderMode mode = GetRenderModeByName(sRenderMode);
-	g_WeaponRenderMode.SetValue(sName, mode);
+	g_ItemRenderMode.SetValue(sName, mode);
 	CallSettingsForward(sName, "rendermode", mode);
 
 	//renderfx
@@ -437,75 +503,103 @@ bool ParseWeaponConfig(const char[] file)
 	kv.GetString("renderfx", sRenderFx, sizeof(sRenderFx));
 	
 	RenderFx fx = GetRenderFxByName(sRenderFx);
-	g_WeaponRenderFx.SetValue(sName, GetRenderFxByName(sRenderFx));
+	g_ItemRenderFx.SetValue(sName, GetRenderFxByName(sRenderFx));
 	CallSettingsForward(sName, "renderfx", fx);
 
 	//rendercolor
 	char sRenderColor[32];
 	kv.GetString("rendercolor", sRenderColor, sizeof(sRenderColor));
-	g_WeaponRenderColor.SetArray(sName, GetColorByName(sRenderColor), 4);
+	g_ItemRenderColor.SetArray(sName, GetColorByName(sRenderColor), 4);
 
 	//viewmodel
 	char sViewmodel[PLATFORM_MAX_PATH];
 	kv.GetString("viewmodel", sViewmodel, sizeof(sViewmodel));
-	g_WeaponViewmodel.SetString(sName, sViewmodel);
+	g_ItemViewmodel.SetString(sName, sViewmodel);
 	CallSettingsForwardStr(sName, "viewmodel", sViewmodel);
 
 	//worldmodel
 	char sWorldModel[PLATFORM_MAX_PATH];
 	kv.GetString("worldmodel", sWorldModel, sizeof(sWorldModel));
-	g_WeaponWorldmodel.SetString(sName, sWorldModel);
+	g_ItemWorldmodel.SetString(sName, sWorldModel);
 	CallSettingsForwardStr(sName, "worldmodel", sWorldModel);
 
 	//quality
 	char sQuality[QUALITY_NAME_LENGTH];
 	kv.GetString("quality", sQuality, sizeof(sQuality));
-	g_WeaponQuality.SetString(sName, sQuality);
+	g_ItemQuality.SetString(sName, sQuality);
 	CallSettingsForwardStr(sName, "quality", sQuality);
 
 	//level
 	int iLevel = kv.GetNum("level");
-	g_WeaponLevel.SetValue(sName, iLevel);
+	g_ItemLevel.SetValue(sName, iLevel);
 	CallSettingsForward(sName, "level", iLevel);
 
 	//killicon
 	char sKillIcon[64];
 	kv.GetString("killicon", sKillIcon, sizeof(sKillIcon));
-	g_WeaponKillIcon.SetString(sName, sKillIcon);
+	g_ItemKillIcon.SetString(sName, sKillIcon);
 	CallSettingsForwardStr(sName, "killicon", sKillIcon);
 
 	//logname
 	char sLogName[64];
 	kv.GetString("logname", sLogName, sizeof(sLogName));
-	g_WeaponLogName.SetString(sName, sLogName);
+	g_ItemLogName.SetString(sName, sLogName);
 	CallSettingsForwardStr(sName, "logname", sLogName);
 
 	//clip
 	int iClip = kv.GetNum("clip", -1);
-	g_WeaponClip.SetValue(sName, iClip);
+	g_ItemClip.SetValue(sName, iClip);
 	CallSettingsForward(sName, "clip", iClip);
 
 	//ammo
 	int iAmmo = kv.GetNum("ammo", -1);
-	g_WeaponAmmo.SetValue(sName, iAmmo);
+	g_ItemAmmo.SetValue(sName, iAmmo);
 	CallSettingsForward(sName, "ammo", iAmmo);
 
 	//metal
 	int iMetal = kv.GetNum("metal");
-	g_WeaponMetal.SetValue(sName, iMetal);
+	g_ItemMetal.SetValue(sName, iMetal);
 	CallSettingsForward(sName, "metal", iMetal);
 
 	//particle
 	char sParticle[MAX_PARTICLE_NAME_LENGTH];
 	kv.GetString("particle", sParticle, sizeof(sParticle));
-	g_WeaponParticle.SetString(sName, sParticle);
+	g_ItemParticle.SetString(sName, sParticle);
 	CallSettingsForwardStr(sName, "particle", sParticle);
 
 	//particle_time
 	float fParticleTime = kv.GetFloat("particle_time");
-	g_WeaponParticleTime.SetValue(sName, fParticleTime);
+	g_ItemParticleTime.SetValue(sName, fParticleTime);
 	CallSettingsForward(sName, "particle_time", fParticleTime);
 
+	//pre-attributes
+	if (kv.JumpToKey("pre-attributes") && kv.GotoFirstSubKey(false))
+	{
+		ArrayList attributes = new ArrayList(ByteCountToCells(MAX_ATTRIBUTE_NAME_LENGTH));
+		StringMap attributesvalues = new StringMap();
+		
+		char sAttributeName[MAX_ATTRIBUTE_NAME_LENGTH];
+		float fAttributeValue;
+
+		do
+		{
+			kv.GetSectionName(sAttributeName, sizeof(sAttributeName));
+			fAttributeValue = kv.GetFloat(NULL_STRING, 0.0);
+
+			attributes.PushString(sAttributeName);
+			attributesvalues.SetValue(sAttributeName, fAttributeValue);
+		}
+		while (kv.GotoNextKey(false));
+
+		g_ItemPreAttributesData.SetValue(sName, attributes);
+
+		char sAttributesValues[MAX_ITEM_NAME_LENGTH + 12];
+		FormatEx(sAttributesValues, sizeof(sAttributesValues), "%s_values", sName);
+		g_ItemPreAttributesData.SetValue(sAttributesValues, attributesvalues);
+
+		kv.Rewind();
+	}
+	
 	//attributes
 	if (kv.JumpToKey("attributes") && kv.GotoFirstSubKey())
 	{
@@ -559,11 +653,11 @@ bool ParseWeaponConfig(const char[] file)
 		}
 		while (kv.GotoNextKey());
 
-		g_WeaponAttributesData.SetValue(sName, attributesdata);
+		g_ItemAttributesData.SetValue(sName, attributesdata);
 
-		char sAttributesList[MAX_WEAPON_NAME_LENGTH + 12];
+		char sAttributesList[MAX_ITEM_NAME_LENGTH + 12];
 		FormatEx(sAttributesList, sizeof(sAttributesList), "%s_list", sName);
-		g_WeaponAttributesData.SetValue(sAttributesList, attributeslist);
+		g_ItemAttributesData.SetValue(sAttributesList, attributeslist);
 
 		kv.Rewind();
 	}
@@ -637,11 +731,11 @@ bool ParseWeaponConfig(const char[] file)
 		}
 		while (kv.GotoNextKey());
 
-		g_WeaponSoundsData.SetValue(sName, soundsdata);
+		g_ItemSoundsData.SetValue(sName, soundsdata);
 
-		char sSoundsList[MAX_WEAPON_NAME_LENGTH + 12];
+		char sSoundsList[MAX_ITEM_NAME_LENGTH + 12];
 		FormatEx(sSoundsList, sizeof(sSoundsList), "%s_list", sName);
-		g_WeaponSoundsData.SetValue(sSoundsList, soundslist);
+		g_ItemSoundsData.SetValue(sSoundsList, soundslist);
 
 		kv.Rewind();
 	}
@@ -709,21 +803,21 @@ bool ParseWeaponConfig(const char[] file)
 		kv.Rewind();
 	}
 
-	Call_StartForward(g_Forward_OnRegisterWeaponConfigPost);
+	Call_StartForward(g_Forward_OnRegisterItemConfigPost);
 	Call_PushString(sName);
 	Call_PushString(file);
 	Call_PushCell(kv);
 	Call_Finish();
 
 	delete kv;
-	LogMessage("Available Weapon: %s", file);
+	LogMessage("Item Config Parsed: %s", file);
 
 	return true;
 }
 
 void CallSettingsForward(const char[] name, const char[] setting, any value)
 {
-	Call_StartForward(g_Forward_OnRegisterWeaponSetting);
+	Call_StartForward(g_Forward_OnRegisterItemSetting);
 	Call_PushString(name);
 	Call_PushString(setting);
 	Call_PushCell(value);
@@ -732,7 +826,7 @@ void CallSettingsForward(const char[] name, const char[] setting, any value)
 
 void CallSettingsForwardStr(const char[] name, const char[] setting, const char[] value)
 {
-	Call_StartForward(g_Forward_OnRegisterWeaponSettingStr);
+	Call_StartForward(g_Forward_OnRegisterItemSettingStr);
 	Call_PushString(name);
 	Call_PushString(setting);
 	Call_PushString(value);
@@ -744,7 +838,7 @@ void ParseOverrides()
 	DestroyItems();
 	
 	char sPath[PLATFORM_MAX_PATH];
-	BuildPath(Path_SM, sPath, sizeof(sPath), "configs/tf2-weapons/overrides.cfg");
+	BuildPath(Path_SM, sPath, sizeof(sPath), "configs/tf2-items/item-overrides.cfg");
 	
 	KeyValues kv = new KeyValues("overrides");
 
@@ -937,8 +1031,8 @@ public void Event_OnPlayerSpawn(Event event, const char[] name, bool dontBroadca
 	if (client == 0)
 		return;
 	
-	if (convar_WeaponMenuOnSpawn.BoolValue)
-		OpenWeaponsMenu(client);
+	if (convar_SpawnMenu.BoolValue)
+		OpenItemsMenu(client);
 }
 
 public void Event_OnResupply(Event event, const char[] name, bool dontBroadcast)
@@ -948,13 +1042,13 @@ public void Event_OnResupply(Event event, const char[] name, bool dontBroadcast)
 	if (client == 0)
 		return;
 	
-	int entity = -1; char sName[MAX_WEAPON_NAME_LENGTH];
+	int entity = -1; char sName[MAX_ITEM_NAME_LENGTH];
 	while ((entity = FindEntityByClassname(entity, "tf_weapon_*")) != -1)
 	{
 		if (GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") == client)
 		{
 			GetEntPropString(entity, Prop_Data, "m_iName", sName, sizeof(sName));
-			ExecuteWeaponAction(client, entity, sName, "remove");
+			ExecuteItemAction(client, entity, sName, "remove");
 		}
 	}
 }
@@ -971,7 +1065,7 @@ public Action Event_OnPlayerDeath(Event event, const char[] name, bool dontBroad
 	
 	int weapon = event.GetInt("inflictor_entindex");
 
-	char sName[MAX_WEAPON_NAME_LENGTH];
+	char sName[MAX_ITEM_NAME_LENGTH];
 	GetEntPropString(weapon, Prop_Data, "m_iName", sName, sizeof(sName));
 
 	if (strlen(sName) == 0)
@@ -980,14 +1074,14 @@ public Action Event_OnPlayerDeath(Event event, const char[] name, bool dontBroad
 	bool changed;
 
 	char sKillIcon[64];
-	if (g_WeaponKillIcon.GetString(sName, sKillIcon, sizeof(sKillIcon)) && strlen(sKillIcon) > 0)
+	if (g_ItemKillIcon.GetString(sName, sKillIcon, sizeof(sKillIcon)) && strlen(sKillIcon) > 0)
 	{
 		event.SetString("weapon", sKillIcon);
 		changed = true;
 	}
 
 	char sLogName[64];
-	if (g_WeaponLogName.GetString(sName, sLogName, sizeof(sLogName)) && strlen(sLogName) > 0)
+	if (g_ItemLogName.GetString(sName, sLogName, sizeof(sLogName)) && strlen(sLogName) > 0)
 	{
 		event.SetString("weapon_logclassname", sLogName);
 		changed = true;
@@ -1002,7 +1096,7 @@ public Action Event_OnPlayerDeath(Event event, const char[] name, bool dontBroad
 		if (GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") == client)
 		{
 			GetEntPropString(entity, Prop_Data, "m_iName", sName, sizeof(sName));
-			ExecuteWeaponAction(client, entity, sName, "remove");
+			ExecuteItemAction(client, entity, sName, "remove");
 		}
 	}
 
@@ -1028,7 +1122,7 @@ public void OnEntityDestroyed(int entity)
 	g_IsCustom[entity] = false;
 }
 
-public Action Command_Weapons(int client, int args)
+public Action Command_Items(int client, int args)
 {
 	if (IsClientServer(client))
 	{
@@ -1044,25 +1138,25 @@ public Action Command_Weapons(int client, int args)
 
 	if (args == 0)
 	{
-		OpenWeaponsMenu(client);
+		OpenItemsMenu(client);
 		return Plugin_Handled;
 	}
 
 	if (!IsPlayerAlive(client))
 	{
-		CPrintToChat(client, "You must be alive to give yourself a weapon.");
+		CPrintToChat(client, "You must be alive to give yourself an item.");
 		return Plugin_Handled;
 	}
 
-	char sName[MAX_WEAPON_NAME_LENGTH];
+	char sName[MAX_ITEM_NAME_LENGTH];
 	GetCmdArgString(sName, sizeof(sName));
 
-	if (g_WeaponsList.FindString(sName) == -1)
+	if (g_ItemsList.FindString(sName) == -1)
 	{
-		char sBuffer[MAX_WEAPON_NAME_LENGTH];
-		for (int i = 0; i < g_WeaponsList.Length; i++)
+		char sBuffer[MAX_ITEM_NAME_LENGTH];
+		for (int i = 0; i < g_ItemsList.Length; i++)
 		{
-			g_WeaponsList.GetString(i, sBuffer, sizeof(sBuffer));
+			g_ItemsList.GetString(i, sBuffer, sizeof(sBuffer));
 
 			if (StrContains(sBuffer, sName) != -1)
 			{
@@ -1071,9 +1165,9 @@ public Action Command_Weapons(int client, int args)
 			}
 		}
 
-		if (g_WeaponsList.FindString(sName) == -1)
+		if (g_ItemsList.FindString(sName) == -1)
 		{
-			CPrintToChat(client, "You have specified a weapon that wasn't found.");
+			CPrintToChat(client, "You have specified an item that isn't available.");
 			return Plugin_Handled;
 		}
 	}
@@ -1082,18 +1176,18 @@ public Action Command_Weapons(int client, int args)
 	TF2_GetClientClassName(client, sCurrentClass, sizeof(sCurrentClass));
 
 	char sClass[2048];
-	g_WeaponClasses.GetString(sName, sClass, sizeof(sClass));
+	g_ItemClasses.GetString(sName, sClass, sizeof(sClass));
 	if (strlen(sClass) > 0 && StrContains(sClass, sCurrentClass, false) == -1)
 	{
-		CPrintToChat(client, "You must be a %s to equip this weapon.", sClass);
+		CPrintToChat(client, "You must be a %s to equip this item.", sClass);
 		return Plugin_Handled;
 	}
 
 	char sFlags[MAX_FLAGS_LENGTH];
-	g_WeaponFlags.GetString(sName, sFlags, sizeof(sFlags));
+	g_ItemFlags.GetString(sName, sFlags, sizeof(sFlags));
 	if (strlen(sFlags) > 0 && !CheckCommandAccess(client, "", ReadFlagString(sFlags), true))
 	{
-		CPrintToChat(client, "You don't have the required flags to equip this weapon.");
+		CPrintToChat(client, "You don't have the required flags to equip this item.");
 		return Plugin_Handled;
 	}
 
@@ -1101,10 +1195,10 @@ public Action Command_Weapons(int client, int args)
 	GetClientAuthId(client, AuthId_Steam2, sSteamID, sizeof(sSteamID));
 	
 	char sSteamIDs[2048];
-	g_WeaponSteamIDs.GetString(sName, sSteamIDs, sizeof(sSteamIDs));
+	g_ItemSteamIDs.GetString(sName, sSteamIDs, sizeof(sSteamIDs));
 	if (!IsDrixevel(client) && strlen(sSteamIDs) > 0 && StrContains(sSteamIDs, sSteamID, false) == -1)
 	{
-		CPrintToChat(client, "You don't have access to equipping this weapon.");
+		CPrintToChat(client, "You don't have access to equipping this item.");
 		return Plugin_Handled;
 	}
 
@@ -1112,7 +1206,7 @@ public Action Command_Weapons(int client, int args)
 	return Plugin_Handled;
 }
 
-void OpenWeaponsMenu(int client)
+void OpenItemsMenu(int client)
 {
 	char sCurrentClass[64];
 	TF2_GetClientClassName(client, sCurrentClass, sizeof(sCurrentClass));
@@ -1120,23 +1214,23 @@ void OpenWeaponsMenu(int client)
 	char sSteamID[64];
 	GetClientAuthId(client, AuthId_Steam2, sSteamID, sizeof(sSteamID));
 
-	Menu menu = new Menu(MenuHandler_Weapons);
-	menu.SetTitle("Pick a weapon to equip:");
+	Menu menu = new Menu(MenuHandler_Items);
+	menu.SetTitle("Pick an item to equip:");
 
-	char sName[MAX_WEAPON_NAME_LENGTH]; char sClass[2048]; char sFlags[MAX_FLAGS_LENGTH]; char sSteamIDs[2048]; 
-	for (int i = 0; i < g_WeaponsList.Length; i++)
+	char sName[MAX_ITEM_NAME_LENGTH]; char sClass[2048]; char sFlags[MAX_FLAGS_LENGTH]; char sSteamIDs[2048]; 
+	for (int i = 0; i < g_ItemsList.Length; i++)
 	{
-		g_WeaponsList.GetString(i, sName, sizeof(sName));
+		g_ItemsList.GetString(i, sName, sizeof(sName));
 		
-		g_WeaponClasses.GetString(sName, sClass, sizeof(sClass));
+		g_ItemClasses.GetString(sName, sClass, sizeof(sClass));
 		if (strlen(sClass) > 0 && StrContains(sClass, "all", false) == -1 && StrContains(sClass, sCurrentClass, false) == -1)
 			continue;
 
-		g_WeaponFlags.GetString(sName, sFlags, sizeof(sFlags));
+		g_ItemFlags.GetString(sName, sFlags, sizeof(sFlags));
 		if (strlen(sFlags) > 0 && !CheckCommandAccess(client, "", ReadFlagString(sFlags), true))
 			continue;
 		
-		g_WeaponSteamIDs.GetString(sName, sSteamIDs, sizeof(sSteamIDs));
+		g_ItemSteamIDs.GetString(sName, sSteamIDs, sizeof(sSteamIDs));
 		if (!IsDrixevel(client) && strlen(sSteamIDs) > 0 && StrContains(sSteamIDs, sSteamID, false) == -1)
 			continue;
 
@@ -1144,46 +1238,54 @@ void OpenWeaponsMenu(int client)
 	}
 
 	if (menu.ItemCount == 0)
-		menu.AddItem("", " -- No Weapons Available --", ITEMDRAW_DISABLED);
+		menu.AddItem("", " -- No Items Available --", ITEMDRAW_DISABLED);
 
 	menu.Display(client, MENU_TIME_FOREVER);
 }
 
-public int MenuHandler_Weapons(Menu menu, MenuAction action, int param1, int param2)
+public int MenuHandler_Items(Menu menu, MenuAction action, int param1, int param2)
 {
 	switch (action)
 	{
 		case MenuAction_Select:
 		{
-			char sName[MAX_WEAPON_NAME_LENGTH];
+			char sName[MAX_ITEM_NAME_LENGTH];
 			menu.GetItem(param2, sName, sizeof(sName));
 
-			OpenWeaponMenu(param1, sName);
+			OpenItemMenu(param1, sName);
 		}
 		case MenuAction_End:
 			delete menu;
 	}
 }
 
-void OpenWeaponMenu(int client, const char[] name)
+void OpenItemMenu(int client, const char[] name)
 {
 	char sDescription[MAX_DESCRIPTION_LENGTH];
-	g_WeaponDescription.GetString(name, sDescription, sizeof(sDescription));
+	g_ItemDescription.GetString(name, sDescription, sizeof(sDescription));
 
 	if (strlen(sDescription) > 0)
 		Format(sDescription, sizeof(sDescription), "\nDescription: %s\n \n", sDescription);
 	
-	Menu menu = new Menu(MenuHandler_Weapon);
-	menu.SetTitle("Information for weapon: %s%s", name, strlen(sDescription) > 0 ? sDescription : "\n ");
+	Menu menu = new Menu(MenuHandler_Item);
+	menu.SetTitle("Information for item: %s%s", name, strlen(sDescription) > 0 ? sDescription : "\n ");
 
-	menu.AddItem("equip", "Equip Weapon");
-	menu.AddItem("spawn", "Spawn with Weapon");
+	menu.AddItem("equip", "Equip Item");
+	menu.AddItem("spawn", "Spawn with Item");
+
+	ArrayList authors;
+	g_ItemAuthors.GetValue(name, authors);
+
+	if (authors != null)
+		menu.AddItem("authors", "View Authors");
 
 	PushMenuString(menu, "name", name);
+	
+	menu.ExitBackButton = true;
 	menu.Display(client, MENU_TIME_FOREVER);
 }
 
-public int MenuHandler_Weapon(Menu menu, MenuAction action, int param1, int param2)
+public int MenuHandler_Item(Menu menu, MenuAction action, int param1, int param2)
 {
 	switch (action)
 	{
@@ -1192,34 +1294,37 @@ public int MenuHandler_Weapon(Menu menu, MenuAction action, int param1, int para
 			char sAction[64];
 			menu.GetItem(param2, sAction, sizeof(sAction));
 
-			char sName[MAX_WEAPON_NAME_LENGTH];
+			char sName[MAX_ITEM_NAME_LENGTH];
 			GetMenuString(menu, "name", sName, sizeof(sName));
 
 			if (StrEqual(sAction, "equip"))
 			{
 				if (!IsPlayerAlive(param1))
 				{
-					CPrintToChat(param1, "You must be alive to give yourself a weapon.");
-					OpenWeaponMenu(param1, sName);
+					CPrintToChat(param1, "You must be alive to give yourself an item.");
+					OpenItemMenu(param1, sName);
 					return;
 				}
 
 				GiveItem(param1, sName, true);
 			}
 			else if (StrEqual(sAction, "spawn"))
-			{
-				OpenSpawnWeaponClassMenu(param1, sName);
-			}
+				OpenSpawnItemClassMenu(param1, sName);
+			else if (StrEqual(sAction, "authors"))
+				ShowAuthors(param1, sName);
 		}
+		case MenuAction_Cancel:
+			if (param2 == MenuCancel_ExitBack)
+				OpenItemsMenu(param1);
 		case MenuAction_End:
 			delete menu;
 	}
 }
 
-public Action Command_ReloadWeapons(int client, int args)
+public Action Command_ReloadItems(int client, int args)
 {
-	ParseWeapons();
-	ReplyToCommand(client, "All weapon configs have been reloaded.");
+	ParseItems();
+	ReplyToCommand(client, "All item configs have been reloaded.");
 	return Plugin_Handled;
 }
 
@@ -1236,19 +1341,41 @@ int GiveItem(int client, const char[] name, bool message = false)
 		return -1;
 	
 	char sEntity[MAX_ENTITY_CLASSNAME_LENGTH];
-	g_WeaponEntity.GetString(name, sEntity, sizeof(sEntity));
+	g_ItemEntity.GetString(name, sEntity, sizeof(sEntity));
 
 	if (strlen(sEntity) == 0)
 		return -1;
 	
 	int slot;
-	g_WeaponSlot.GetValue(name, slot);
+	g_ItemSlot.GetValue(name, slot);
 	TF2_RemoveWeaponSlot(client, slot);
 
 	if (StrContains(sEntity, "tf_weapon_", false) != 0)
 		Format(sEntity, sizeof(sEntity), "tf_weapon_%s", sEntity);
 
-	Handle hItem = TF2Items_CreateItem(OVERRIDE_ALL|PRESERVE_ATTRIBUTES|FORCE_GENERATION);
+	char sItemFlags[256];
+	g_ItemItemFlags.GetString(name, sItemFlags, sizeof(sItemFlags));
+
+	int flags;
+
+	if (StrContains(sItemFlags, "OVERRIDE_CLASSNAME", false) != -1)
+		flags |= OVERRIDE_CLASSNAME;
+	if (StrContains(sItemFlags, "OVERRIDE_ITEM_DEF", false) != -1)
+		flags |= OVERRIDE_ITEM_DEF;
+	if (StrContains(sItemFlags, "OVERRIDE_ITEM_LEVEL", false) != -1)
+		flags |= OVERRIDE_ITEM_LEVEL;
+	if (StrContains(sItemFlags, "OVERRIDE_ITEM_QUALITY", false) != -1)
+		flags |= OVERRIDE_ITEM_QUALITY;
+	if (StrContains(sItemFlags, "OVERRIDE_ATTRIBUTES", false) != -1)
+		flags |= OVERRIDE_ATTRIBUTES;
+	if (StrContains(sItemFlags, "OVERRIDE_ALL", false) != -1)
+		flags |= OVERRIDE_ALL;
+	if (StrContains(sItemFlags, "PRESERVE_ATTRIBUTES", false) != -1)
+		flags |= PRESERVE_ATTRIBUTES;
+	if (StrContains(sItemFlags, "FORCE_GENERATION", false) != -1)
+		flags |= FORCE_GENERATION;
+
+	Handle hItem = TF2Items_CreateItem(flags);
 
 	TFClassType class = TF2_GetPlayerClass(client);
 	
@@ -1281,17 +1408,38 @@ int GiveItem(int client, const char[] name, bool message = false)
 	TF2Items_SetClassname(hItem, sEntity);
 
 	int index;
-	g_WeaponIndex.GetValue(name, index);
+	g_ItemIndex.GetValue(name, index);
 	TF2Items_SetItemIndex(hItem, index);
 
 	int level;
-	g_WeaponLevel.GetValue(name, level);
+	g_ItemLevel.GetValue(name, level);
 	TF2Items_SetLevel(hItem, level);
 
 	char sQuality[32]; int quality;
-	g_WeaponQuality.GetString(name, sQuality, sizeof(sQuality));
+	g_ItemQuality.GetString(name, sQuality, sizeof(sQuality));
 	quality = IsStringNumeric(sQuality) ? StringToInt(sQuality) : view_as<int>(TF2_GetQualityFromName(sQuality));
 	TF2Items_SetQuality(hItem, quality);
+
+	ArrayList attributes;
+	if (g_ItemPreAttributesData.GetValue(name, attributes) && attributes != null)
+	{
+		char sAttributesValues[MAX_ITEM_NAME_LENGTH + 12];
+		FormatEx(sAttributesValues, sizeof(sAttributesValues), "%s_values", name);
+
+		StringMap attributesvalues;
+		g_ItemPreAttributesData.GetValue(sAttributesValues, attributesvalues);
+		
+		char sAttribute[MAX_ATTRIBUTE_NAME_LENGTH];
+		float fAttributeValue;
+
+		TF2Items_SetNumAttributes(hItem, attributes.Length);
+		for (int i = 0; i < attributes.Length; i++)
+		{
+			attributes.GetString(i, sAttribute, sizeof(sAttribute));
+			attributesvalues.GetValue(sAttribute, fAttributeValue);
+			TF2Items_SetAttribute(hItem, i, StringToInt(sAttribute), fAttributeValue);
+		}
+	}
 
 	int entity = TF2Items_GiveNamedItem(client, hItem);
 	delete hItem;
@@ -1303,42 +1451,42 @@ int GiveItem(int client, const char[] name, bool message = false)
 	SetEntProp(entity, Prop_Send, "m_bValidatedAttachedEntity", 1);
 
 	float size;
-	g_WeaponSize.GetValue(name, size);
+	g_ItemSize.GetValue(name, size);
 	SetEntPropFloat(entity, Prop_Send, "m_flModelScale", size);
 
 	int skin;
-	g_WeaponSkin.GetValue(name, skin);
+	g_ItemSkin.GetValue(name, skin);
 	SetEntProp(entity, Prop_Send, "m_nSkin", skin);
 
 	RenderMode rendermode;
-	g_WeaponRenderMode.GetValue(name, rendermode);
+	g_ItemRenderMode.GetValue(name, rendermode);
 	SetEntityRenderMode(entity, rendermode);
 
 	RenderFx renderfx;
-	g_WeaponRenderFx.GetValue(name, renderfx);
+	g_ItemRenderFx.GetValue(name, renderfx);
 	SetEntityRenderFx(entity, renderfx);
 
 	int color[4];
-	g_WeaponRenderColor.GetArray(name, color, sizeof(color));
+	g_ItemRenderColor.GetArray(name, color, sizeof(color));
 	SetEntityRenderColorEx(entity, color);
 
 	char sViewmodel[PLATFORM_MAX_PATH];
-	g_WeaponViewmodel.GetString(name, sViewmodel, sizeof(sViewmodel));
+	g_ItemViewmodel.GetString(name, sViewmodel, sizeof(sViewmodel));
 
 	AttachViewmodel(client, class, entity, sViewmodel, index);
 
 	char sWorldModel[PLATFORM_MAX_PATH];
-	g_WeaponWorldmodel.GetString(name, sWorldModel, sizeof(sWorldModel));
+	g_ItemWorldmodel.GetString(name, sWorldModel, sizeof(sWorldModel));
 	SetWorldModel(entity, sWorldModel);
 
 	int clip;
-	g_WeaponClip.GetValue(name, clip);
+	g_ItemClip.GetValue(name, clip);
 
 	if (clip != -1)
 		SetClip(entity, clip);
 
 	int ammo;
-	g_WeaponAmmo.GetValue(name, ammo);
+	g_ItemAmmo.GetValue(name, ammo);
 
 	if (ammo != -1)
 		SetAmmo(client, entity, ammo);
@@ -1346,17 +1494,17 @@ int GiveItem(int client, const char[] name, bool message = false)
 	if (class == TFClass_Engineer)
 	{
 		int metal;
-		g_WeaponMetal.GetValue(name, metal);
+		g_ItemMetal.GetValue(name, metal);
 		TF2_SetMetal(client, metal);
 	}
 
 	char sParticle[MAX_PARTICLE_NAME_LENGTH];
-	g_WeaponParticle.GetString(name, sParticle, sizeof(sParticle));
+	g_ItemParticle.GetString(name, sParticle, sizeof(sParticle));
 
 	if (strlen(sParticle) > 0)
 	{
 		float particletime;
-		g_WeaponParticleTime.GetValue(name, particletime);
+		g_ItemParticleTime.GetValue(name, particletime);
 
 		if (particletime < 0.0)
 			particletime = 0.0;
@@ -1364,7 +1512,7 @@ int GiveItem(int client, const char[] name, bool message = false)
 		AttachParticle(entity, sParticle, particletime);
 	}
 
-	ExecuteWeaponAction(client, entity, name, "apply");
+	ExecuteItemAction(client, entity, name, "apply");
 
 	EquipPlayerWeapon(client, entity);
 	
@@ -1372,14 +1520,14 @@ int GiveItem(int client, const char[] name, bool message = false)
 		EquipWeaponSlot(client, slot);
 
 	if (message)
-		CPrintToChat(client, "Weapon Equipped: %s", name);
+		CPrintToChat(client, "Item Equipped: %s", name);
 	
 	g_IsCustom[entity] = true;
 
 	return entity;
 }
 
-stock void AttachViewmodel(int client, TFClassType class, int weapon, char[] viewmodel, int index)
+void AttachViewmodel(int client, TFClassType class, int item, char[] viewmodel, int index)
 {
 	if (strlen(viewmodel) == 0)
 		return;
@@ -1433,7 +1581,7 @@ stock void AttachViewmodel(int client, TFClassType class, int weapon, char[] vie
 
 		Call_EquipWearable(client, iViewModel);
 			
-		SetEntPropEnt(iViewModel, Prop_Send, "m_hEffectEntity", weapon);
+		SetEntPropEnt(iViewModel, Prop_Send, "m_hEffectEntity", item);
 		SDKHook(iViewModel, SDKHook_SetTransmit, Hook_VMTransmit);
 	}
 	
@@ -1454,7 +1602,7 @@ stock void AttachViewmodel(int client, TFClassType class, int weapon, char[] vie
 
 		Call_EquipWearable(client, iWeaponModel);
 
-		SetEntPropEnt(iWeaponModel, Prop_Send, "m_hEffectEntity", weapon);
+		SetEntPropEnt(iWeaponModel, Prop_Send, "m_hEffectEntity", item);
 		SDKHook(iWeaponModel, SDKHook_SetTransmit, Hook_VMTransmit);
 	}
 }
@@ -1520,7 +1668,7 @@ public Action Hook_VMTransmit(int iEnt, int iOther)
 	return Plugin_Continue;
 }
 
-void SetWorldModel(int weapon, char[] worldmodel)
+void SetWorldModel(int item, char[] worldmodel)
 {
 	if (strlen(worldmodel) == 0)
 		return;
@@ -1534,18 +1682,18 @@ void SetWorldModel(int weapon, char[] worldmodel)
 	if (FileExists(worldmodel, true))
 	{
 		int model = PrecacheModel(worldmodel, true);
-		SetEntProp(weapon, Prop_Send, "m_iWorldModelIndex", model);
-		SetEntProp(weapon, Prop_Send, "m_nModelIndexOverrides", model);
+		SetEntProp(item, Prop_Send, "m_iWorldModelIndex", model);
+		SetEntProp(item, Prop_Send, "m_nModelIndexOverrides", model);
 	}
 }
 
-void OpenSpawnWeaponClassMenu(int client, const char[] name)
+void OpenSpawnItemClassMenu(int client, const char[] name)
 {
-	Menu menu = new Menu(MenuHandler_OpenSpawnWeaponClassMenu);
-	menu.SetTitle("Pick a class tp spawn '%s' with:", name);
+	Menu menu = new Menu(MenuHandler_OpenSpawnItemClassMenu);
+	menu.SetTitle("Pick a class to spawn '%s' with:", name);
 
 	char sClass[2048];
-	g_WeaponClasses.GetString(name, sClass, sizeof(sClass));
+	g_ItemClasses.GetString(name, sClass, sizeof(sClass));
 
 	if (strlen(sClass) == 0 || StrContains(sClass, "all", false) != -1 || StrContains(sClass, "scout", false) != -1)
 		menu.AddItem("scout", "Scout");
@@ -1571,7 +1719,7 @@ void OpenSpawnWeaponClassMenu(int client, const char[] name)
 	menu.Display(client, MENU_TIME_FOREVER);
 }
 
-public int MenuHandler_OpenSpawnWeaponClassMenu(Menu menu, MenuAction action, int param1, int param2)
+public int MenuHandler_OpenSpawnItemClassMenu(Menu menu, MenuAction action, int param1, int param2)
 {
 	switch (action)
 	{
@@ -1580,20 +1728,20 @@ public int MenuHandler_OpenSpawnWeaponClassMenu(Menu menu, MenuAction action, in
 			char sClass[32];
 			menu.GetItem(param2, sClass, sizeof(sClass));
 
-			char sName[MAX_WEAPON_NAME_LENGTH];
+			char sName[MAX_ITEM_NAME_LENGTH];
 			GetMenuString(menu, "name", sName, sizeof(sName));
 
 			int iSlot;
-			g_WeaponSlot.SetValue(sName, iSlot);
+			g_ItemSlot.SetValue(sName, iSlot);
 
-			SetSpawnWeapon(param1, sClass, iSlot, sName);
+			SetSpawnItem(param1, sClass, iSlot, sName);
 		}
 		case MenuAction_End:
 			delete menu;
 	}
 }
 
-void SetSpawnWeapon(int client, const char[] class, int slot, const char[] name)
+void SetSpawnItem(int client, const char[] class, int slot, const char[] name)
 {
 	CPrintToChat(client, "%s has been equipped for the %s class and the %i slot.", name, class, slot);
 }
@@ -1603,17 +1751,17 @@ public int Native_AllowAttributeRegisters(Handle plugin, int numParams)
 	return g_AttributesList != null;
 }
 
-bool ExecuteWeaponAction(int client, int weapon, const char[] name, const char[] action)
+bool ExecuteItemAction(int client, int item, const char[] name, const char[] action)
 {
 	StringMap attributesdata;
-	if (!g_WeaponAttributesData.GetValue(name, attributesdata) || attributesdata == null)
+	if (!g_ItemAttributesData.GetValue(name, attributesdata) || attributesdata == null)
 		return false;
 	
 	char sAttributesList[MAX_ATTRIBUTE_NAME_LENGTH + 12];
 	FormatEx(sAttributesList, sizeof(sAttributesList), "%s_list", name);
 
 	ArrayList attributeslist;
-	if (!g_WeaponAttributesData.GetValue(sAttributesList, attributeslist) || attributeslist == null)
+	if (!g_ItemAttributesData.GetValue(sAttributesList, attributeslist) || attributeslist == null)
 		return false;
 	
 	char sSteamID[64];
@@ -1636,17 +1784,17 @@ bool ExecuteWeaponAction(int client, int weapon, const char[] name, const char[]
 		if (attributedata.GetString("steamids", sSteamIDs, sizeof(sSteamIDs)) && strlen(sSteamIDs) > 0 && StrContains(sSteamIDs, sSteamID, false) == -1)
 			continue;
 		
-		ExecuteAttributeAction(client, weapon, sAttribute, action, attributedata);
+		ExecuteAttributeAction(client, item, sAttribute, action, attributedata);
 	}
 
 	return true;
 }
 
-bool ExecuteAttributeAction(int client, int weapon, char[] attrib, const char[] action, StringMap attributesdata)
+bool ExecuteAttributeAction(int client, int item, char[] attrib, const char[] action, StringMap attributesdata)
 {
 	float value;
 	if (attributesdata.GetValue("default", value))
-		TF2Attrib_SetByName(weapon, attrib, value);
+		TF2Attrib_SetByName(item, attrib, value);
 
 	Handle action_call;
 	if (!g_Attributes_Calls.GetValue(attrib, action_call) || action_call == null)
@@ -1656,7 +1804,7 @@ bool ExecuteAttributeAction(int client, int weapon, char[] attrib, const char[] 
 	{
 		Call_StartForward(action_call);
 		Call_PushCell(client);
-		Call_PushCell(weapon);
+		Call_PushCell(item);
 		Call_PushString(attrib);
 		Call_PushString(action);
 		Call_PushCell(attributesdata);
@@ -1672,16 +1820,16 @@ public Action OnSoundPlay(int clients[64], int& numClients, char sound[PLATFORM_
 {
 	if (entity > 0 && entity <= MaxClients && IsClientInGame(entity))
 	{
-		int weapon = GetEntPropEnt(entity, Prop_Send, "m_hActiveWeapon");
+		int item = GetEntPropEnt(entity, Prop_Send, "m_hActiveWeapon");
 
-		if (!IsValidEntity(weapon))
+		if (!IsValidEntity(item))
 			return Plugin_Continue;
 		
-		char sName[MAX_WEAPON_NAME_LENGTH];
-		GetEntPropString(weapon, Prop_Data, "m_iName", sName, sizeof(sName));
+		char sName[MAX_ITEM_NAME_LENGTH];
+		GetEntPropString(item, Prop_Data, "m_iName", sName, sizeof(sName));
 
 		StringMap soundsdata;
-		if (!g_WeaponSoundsData.GetValue(sName, soundsdata) || soundsdata == null)
+		if (!g_ItemSoundsData.GetValue(sName, soundsdata) || soundsdata == null)
 			return Plugin_Continue;
 		
 		char sSound[PLATFORM_MAX_PATH];
@@ -1806,7 +1954,7 @@ stock bool TF2_IsValidAttribute(const char[] attribute)
 	return true;
 }
 
-public Action Command_CreateWeapon(int client, int args)
+public Action Command_CreateItem(int client, int args)
 {
 	if (args == 0)
 	{
@@ -1816,15 +1964,15 @@ public Action Command_CreateWeapon(int client, int args)
 			return Plugin_Handled;
 		}
 
-		OpenCreateWeaponMenu(client);
+		OpenCreateItemMenu(client);
 		return Plugin_Handled;
 	}
 
 	char sPath[PLATFORM_MAX_PATH];
 	GetCmdArgString(sPath, sizeof(sPath));
 
-	if (StrContains(sPath, "configs/tf2-weapons/weapons", false) != 0)
-		Format(sPath, sizeof(sPath), "configs/tf2-weapons/weapons/%s", sPath);
+	if (StrContains(sPath, "configs/tf2-items/items", false) != 0)
+		Format(sPath, sizeof(sPath), "configs/tf2-items/items/%s", sPath);
 	
 	if (StrContains(sPath, ".cfg", false) != strlen(sPath) - 4)
 		Format(sPath, sizeof(sPath), "%s.cfg", sPath);
@@ -1832,18 +1980,16 @@ public Action Command_CreateWeapon(int client, int args)
 	char sFile[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, sFile, sizeof(sFile), sPath);
 
-	bool created = CreateWeaponConfig(sFile);
-	CReplyToCommand(client, "Weapon template created %ssuccessfully at '%s'.", created ? "" : "un", sPath);
+	bool created = CreateItemConfig(sFile);
+	CReplyToCommand(client, "Item template created %ssuccessfully at '%s'.", created ? "" : "un", sPath);
 
 	return Plugin_Handled;
 }
 
-
-
-bool OpenCreateWeaponMenu(int client)
+bool OpenCreateItemMenu(int client)
 {
-	Menu menu = new Menu(MenuHandler_CreateWeapon);
-	menu.SetTitle("Create a new weapon:");
+	Menu menu = new Menu(MenuHandler_CreateItem);
+	menu.SetTitle("Create a new item:");
 
 	menu.AddItem("name", "Name: (not set)");
 	menu.AddItem("description", "Description: (not set)");
@@ -1870,7 +2016,7 @@ bool OpenCreateWeaponMenu(int client)
 	menu.Display(client, MENU_TIME_FOREVER);
 }
 
-public int MenuHandler_CreateWeapon(Menu menu, MenuAction action, int param1, int param2)
+public int MenuHandler_CreateItem(Menu menu, MenuAction action, int param1, int param2)
 {
 	switch (action)
 	{
@@ -1883,9 +2029,9 @@ public int MenuHandler_CreateWeapon(Menu menu, MenuAction action, int param1, in
 	}
 }
 
-bool CreateWeaponConfig(const char[] file, const char[] name = " ", const char[] description = " ", const char[] flags = " ", const char[] steamids = " ", const char[] classes = " ", const char[] slot = " ", const char[] entity = " ", int index = 0, const char[] viewmodel = " ", const char[] worldmodel = " ", int attachment = 0, float attachment_pos[3] = NULL_VECTOR, float attachment_ang[3] = NULL_VECTOR, float attachment_scale = 1.0, const char[] quality = " ", int level = 0, int clip = 0, int ammo = 0, int metal = 0, const char[] particle = " ", float particle_time = 1.0)
+bool CreateItemConfig(const char[] file, const char[] name = " ", const char[] description = " ", const char[] flags = " ", const char[] steamids = " ", const char[] classes = " ", const char[] slot = " ", const char[] entity = " ", int index = 0, const char[] viewmodel = " ", const char[] worldmodel = " ", int attachment = 0, float attachment_pos[3] = NULL_VECTOR, float attachment_ang[3] = NULL_VECTOR, float attachment_scale = 1.0, const char[] quality = " ", int level = 0, int clip = 0, int ammo = 0, int metal = 0, const char[] particle = " ", float particle_time = 1.0)
 {
-	KeyValues kv = new KeyValues("weapon");
+	KeyValues kv = new KeyValues("item");
 
 	//name
 	kv.SetString("name", name);
@@ -2027,13 +2173,13 @@ bool CheckItemUsage(int client, int flags)
 	return (clientflags & flags) != 0;
 }
 
-enum struct WeaponsData
+enum struct ItemsData
 {
 	int mag;
 	int ammo;
 }
 
-WeaponsData g_WeaponsData[MAX_ENTITY_LIMIT + 1];
+ItemsData g_ItemsData[MAX_ENTITY_LIMIT + 1];
 
 public void TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int itemDefinitionIndex, int itemLevel, int itemQuality, int entityIndex)
 {
@@ -2051,16 +2197,16 @@ public Action Timer_CacheData(Handle timer, DataPack pack)
 	
 	if (client > 0 && IsValidEntity(entityIndex))
 	{
-		g_WeaponsData[entityIndex].mag = GetClip(entityIndex);
-		g_WeaponsData[entityIndex].ammo = GetAmmo(client, entityIndex);
+		g_ItemsData[entityIndex].mag = GetClip(entityIndex);
+		g_ItemsData[entityIndex].ammo = GetAmmo(client, entityIndex);
 	}
 }
 
-public int Native_GiveWeapon(Handle plugin, int numParams)
+public int Native_GiveItem(Handle plugin, int numParams)
 {
 	int client = GetNativeCell(1);
 
-	char sName[MAX_WEAPON_NAME_LENGTH];
+	char sName[MAX_ITEM_NAME_LENGTH];
 	GetNativeString(2, sName, sizeof(sName));
 
 	bool message = GetNativeCell(3);
@@ -2068,20 +2214,20 @@ public int Native_GiveWeapon(Handle plugin, int numParams)
 	return GiveItem(client, sName, message);
 }
 
-public int Native_IsCustom(Handle plugin, int numParams)
+public int Native_IsItemCustom(Handle plugin, int numParams)
 {
 	return g_IsCustom[GetNativeCell(1)];
 }
 
-public int Native_GetWeaponKeyInt(Handle plugin, int numParams)
+public int Native_GetItemKeyInt(Handle plugin, int numParams)
 {
 	int size;
 	GetNativeStringLength(1, size); size++;
 
-	char[] sWeapon = new char[size];
-	GetNativeString(1, sWeapon, size);
+	char[] sItem = new char[size];
+	GetNativeString(1, sItem, size);
 
-	if (g_WeaponsList.FindString(sWeapon) == -1)
+	if (g_ItemsList.FindString(sItem) == -1)
 		return -1;
 	
 	GetNativeStringLength(2, size); size++;
@@ -2092,20 +2238,20 @@ public int Native_GetWeaponKeyInt(Handle plugin, int numParams)
 	int value = -1;
 
 	if (StrEqual(sKey, "slot", false))
-		g_WeaponSlot.GetValue(sWeapon, value);
+		g_ItemSlot.GetValue(sItem, value);
 
 	return value;
 }
 
-public int Native_GetWeaponKeyFloat(Handle plugin, int numParams)
+public int Native_GetItemKeyFloat(Handle plugin, int numParams)
 {
 	int size;
 	GetNativeStringLength(1, size); size++;
 
-	char[] sWeapon = new char[size];
-	GetNativeString(1, sWeapon, size);
+	char[] sItem = new char[size];
+	GetNativeString(1, sItem, size);
 
-	if (g_WeaponsList.FindString(sWeapon) == -1)
+	if (g_ItemsList.FindString(sItem) == -1)
 		return -1;
 	
 	GetNativeStringLength(2, size); size++;
@@ -2116,20 +2262,20 @@ public int Native_GetWeaponKeyFloat(Handle plugin, int numParams)
 	float value = -1.0;
 	
 	if (StrEqual(sKey, "size", false))
-		g_WeaponSize.GetValue(sWeapon, value);
+		g_ItemSize.GetValue(sItem, value);
 
 	return view_as<any>(value);
 }
 
-public int Native_GetWeaponKeyString(Handle plugin, int numParams)
+public int Native_GetItemKeyString(Handle plugin, int numParams)
 {
 	int size;
 	GetNativeStringLength(1, size); size++;
 
-	char[] sWeapon = new char[size];
-	GetNativeString(1, sWeapon, size);
+	char[] sItem = new char[size];
+	GetNativeString(1, sItem, size);
 
-	if (g_WeaponsList.FindString(sWeapon) == -1)
+	if (g_ItemsList.FindString(sItem) == -1)
 		return false;
 	
 	GetNativeStringLength(2, size); size++;
@@ -2140,7 +2286,7 @@ public int Native_GetWeaponKeyString(Handle plugin, int numParams)
 	if (StrEqual(sKey, "worldmodel", false))
 	{
 		char sWorldmodel[PLATFORM_MAX_PATH];
-		if (!g_WeaponWorldmodel.GetString(sWeapon, sWorldmodel, sizeof(sWorldmodel)))
+		if (!g_ItemWorldmodel.GetString(sItem, sWorldmodel, sizeof(sWorldmodel)))
 			return false;
 
 		SetNativeString(3, sWorldmodel, GetNativeCell(4));
@@ -2149,7 +2295,7 @@ public int Native_GetWeaponKeyString(Handle plugin, int numParams)
 	else if (StrEqual(sKey, "classes", false))
 	{
 		char sClasses[2048];
-		if (!g_WeaponClasses.GetString(sWeapon, sClasses, sizeof(sClasses)))
+		if (!g_ItemClasses.GetString(sItem, sClasses, sizeof(sClasses)))
 			return false;
 		
 		SetNativeString(3, sClasses, GetNativeCell(4));
@@ -2162,7 +2308,7 @@ public int Native_GetWeaponKeyString(Handle plugin, int numParams)
 public Action Convert(int client, int args)
 {
 	char sPath[PLATFORM_MAX_PATH];
-	BuildPath(Path_SM, sPath, sizeof(sPath), "configs/tf2-weapons/weapons/");
+	BuildPath(Path_SM, sPath, sizeof(sPath), "configs/tf2-items/items/");
 
 	Handle dir = OpenDirectory(sPath);
 
@@ -2204,9 +2350,9 @@ void ConvertCW3ToTF2W(int client, const char[] config)
 	KeyValues kv_orig = new KeyValues("test");
 	kv_orig.ImportFromFile(sPath);
 
-	char sWeapon[256];
-	kv_orig.GetSectionName(sWeapon, sizeof(sWeapon));
-	TrimString(sWeapon);
+	char sItem[256];
+	kv_orig.GetSectionName(sItem, sizeof(sItem));
+	TrimString(sItem);
 
 	char sClasses[256]; int slot = -1;
 	if (kv_orig.JumpToKey("classes"))
@@ -2361,8 +2507,8 @@ void ConvertCW3ToTF2W(int client, const char[] config)
 	//new
 	KeyValues kv = new KeyValues("weapon");
 
-	if (strlen(sWeapon) > 0)
-		kv.SetString("name", sWeapon);
+	if (strlen(sItem) > 0)
+		kv.SetString("name", sItem);
 
 	if (strlen(sClasses) > 0)
 		kv.SetString("classes", sClasses);
@@ -2439,14 +2585,14 @@ void ConvertCW3ToTF2W(int client, const char[] config)
 public int Native_RefillMag(Handle plugin, int numParams)
 {
 	int weapon = GetNativeCell(1);
-	SetClip(weapon, g_WeaponsData[weapon].mag);
+	SetClip(weapon, g_ItemsData[weapon].mag);
 }
 
 public int Native_RefillAmmo(Handle plugin, int numParams)
 {
 	int client = GetNativeCell(1);
 	int weapon = GetNativeCell(2);
-	SetAmmo(client, weapon, g_WeaponsData[weapon].ammo);
+	SetAmmo(client, weapon, g_ItemsData[weapon].ammo);
 }
 
 public int Native_EquipWearable(Handle plugin, int numParams)
@@ -2521,4 +2667,38 @@ void Call_EquipWearable(int client, int wearable)
 {
 	if (g_SDK_EquipWearable != null)
 		SDKCall(g_SDK_EquipWearable, client, wearable);
+}
+char g_BackItem[MAXPLAYERS + 1][256];
+void ShowAuthors(int client, const char[] item)
+{
+	Panel panel = new Panel();
+	panel.SetTitle("Authors");
+
+	ArrayList authors;
+	g_ItemAuthors.GetValue(item, authors);
+
+	char sData[512];
+	FormatEx(sData, sizeof(sData), "%s_data", item);
+
+	StringMap authorsdata;
+	g_ItemAuthors.GetValue(sData, authorsdata);
+	
+	char sAuthor[64]; char sAuthorsData[64];
+	for (int i = 0; i < authors.Length; i++)
+	{
+		authors.GetString(i, sAuthor, sizeof(sAuthor));
+		authorsdata.GetString(sAuthor, sAuthorsData, sizeof(sAuthorsData));
+		panel.DrawText(sAuthor);
+		panel.DrawText(sAuthorsData);
+	}
+
+	panel.DrawItem("Back");
+	strcopy(g_BackItem[client], 256, item); //hacky fix
+
+	panel.Send(client, MenuAction_Authors, MENU_TIME_FOREVER);
+}
+
+public int MenuAction_Authors(Menu menu, MenuAction action, int param1, int param2)
+{
+	OpenItemMenu(param1, g_BackItem[param1]);
 }

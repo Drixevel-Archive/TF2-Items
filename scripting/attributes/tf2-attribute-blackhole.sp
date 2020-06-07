@@ -7,17 +7,18 @@
 
 //Sourcemod Includes
 #include <sourcemod>
-#include <sourcemod-misc>
-#include <tf2-weapons>
+#include <misc-sm>
+#include <misc-tf>
+#include <tf2-items>
 
 //Globals
-bool g_Setting_Blackhole[MAX_ENTITY_LIMIT];
+bool g_Setting_Blackhole[4096];
 
 bool bHasBlackHole[MAXPLAYERS + 1];
 
 public Plugin myinfo = 
 {
-	name = "[TF2-Weapons] Attribute :: Blackhole", 
+	name = "[TF2-Items] Attribute :: Blackhole", 
 	author = "Drixevel", 
 	description = "An attribute which enables Blackhole effects.", 
 	version = "1.0.0", 
@@ -31,13 +32,13 @@ public void OnPluginStart()
 
 public void OnConfigsExecuted()
 {
-	if (TF2Weapons_AllowAttributeRegisters())
-		TF2Weapons_OnRegisterAttributesPost();
+	if (TF2Items_AllowAttributeRegisters())
+		TF2Items_OnRegisterAttributesPost();
 }
 
-public void TF2Weapons_OnRegisterAttributesPost()
+public void TF2Items_OnRegisterAttributesPost()
 {
-	if (!TF2Weapons_RegisterAttribute(ATTRIBUTE_NAME, OnAttributeAction))
+	if (!TF2Items_RegisterAttribute(ATTRIBUTE_NAME, OnAttributeAction))
 		LogError("Error while registering the '%s' attribute.", ATTRIBUTE_NAME);
 }
 
@@ -86,14 +87,14 @@ void AttemptBlackHole(int client)
 void CreateBlackHole(int client, float duration)
 {
 	float vecLook[3];
-	if (!GetClientCrosshairOrigin(client, vecLook))
+	if (!GetClientLookOrigin(client, vecLook))
 		return;
 
 	TFTeam team = TF2_GetClientTeam(client);
 
-	CreateParticle("eb_tp_vortex01", duration, vecLook);
-	CreateParticle(team == TFTeam_Red ? "raygun_projectile_red_crit" : "raygun_projectile_blue_crit", duration, vecLook);
-	CreateParticle(team == TFTeam_Red ? "eyeboss_vortex_red" : "eyeboss_vortex_blue", duration, vecLook);
+	CreateParticle("eb_tp_vortex01", vecLook, duration);
+	CreateParticle(team == TFTeam_Red ? "raygun_projectile_red_crit" : "raygun_projectile_blue_crit", vecLook, duration);
+	CreateParticle(team == TFTeam_Red ? "eyeboss_vortex_red" : "eyeboss_vortex_blue", vecLook, duration);
 
 	EmitSoundToAll("undead/weapons/moonbeam_spawn.wav", SOUND_FROM_WORLD, SNDCHAN_AUTO, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL, -1, vecLook, NULL_VECTOR, true, 0.0);
 	

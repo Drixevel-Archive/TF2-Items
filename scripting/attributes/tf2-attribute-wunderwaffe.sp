@@ -7,15 +7,16 @@
 
 //Sourcemod Includes
 #include <sourcemod>
-#include <sourcemod-misc>
-#include <tf2-weapons>
+#include <misc-sm>
+#include <misc-tf>
+#include <tf2-items>
 
 //Globals
 bool g_Setting_Wunderwaffe[MAX_ENTITY_LIMIT];
 
 public Plugin myinfo = 
 {
-	name = "[TF2-Weapons] Attribute :: Wunderwaffe", 
+	name = "[TF2-Items] Attribute :: Wunderwaffe", 
 	author = "Drixevel", 
 	description = "An attribute which enables Wunderwaffe effects.", 
 	version = "1.0.0", 
@@ -29,13 +30,13 @@ public void OnPluginStart()
 
 public void OnConfigsExecuted()
 {
-	if (TF2Weapons_AllowAttributeRegisters())
-		TF2Weapons_OnRegisterAttributesPost();
+	if (TF2Items_AllowAttributeRegisters())
+		TF2Items_OnRegisterAttributesPost();
 }
 
-public void TF2Weapons_OnRegisterAttributesPost()
+public void TF2Items_OnRegisterAttributesPost()
 {
-	if (!TF2Weapons_RegisterAttribute(ATTRIBUTE_NAME, OnAttributeAction))
+	if (!TF2Items_RegisterAttribute(ATTRIBUTE_NAME, OnAttributeAction))
 		LogError("Error while registering the '%s' attribute.", ATTRIBUTE_NAME);
 }
 
@@ -106,7 +107,7 @@ void RocketsGameFired(int client, float vPosition[3], float vAngles[3], float fl
 
 		DispatchSpawn(iRocket);
 
-		CreateParticle("critgun_weaponmodel_blu", 0.5, vPosition);
+		CreateParticle("critgun_weaponmodel_blu", vPosition, 0.5);
 
 		int entity = -1;
 		while ((entity = FindEntityByClassname(entity, "tf_zombie")) != -1)

@@ -13,6 +13,12 @@
 
 //Globals
 bool g_Setting_Wunderwaffe[MAX_ENTITY_LIMIT];
+float g_Setting_Speed[MAX_ENTITY_LIMIT];
+float g_Setting_Damage[MAX_ENTITY_LIMIT];
+float g_Setting_Radius[MAX_ENTITY_LIMIT];
+
+float g_Damage[MAX_ENTITY_LIMIT];
+float g_Radius[MAX_ENTITY_LIMIT];
 
 public Plugin myinfo = 
 {
@@ -43,9 +49,19 @@ public void TF2Items_OnRegisterAttributesPost()
 public void OnAttributeAction(int client, int weapon, const char[] attrib, const char[] action, StringMap attributesdata)
 {
 	if (StrEqual(action, "apply", false))
+	{
 		g_Setting_Wunderwaffe[weapon] = true;
+		attributesdata.GetValue("speed", g_Setting_Speed[weapon]);
+		attributesdata.GetValue("damage", g_Setting_Damage[weapon]);
+		attributesdata.GetValue("radius", g_Setting_Radius[weapon]);
+	}
 	else if (StrEqual(action, "remove", false))
+	{
 		g_Setting_Wunderwaffe[weapon] = false;
+		g_Setting_Speed[weapon] = 0.0;
+		g_Setting_Damage[weapon] = 0.0;
+		g_Setting_Radius[weapon] = 0.0;
+	}
 }
 
 public void OnEntityDestroyed(int entity)
@@ -56,6 +72,9 @@ public void OnEntityDestroyed(int entity)
 	char sClassname[32];
 	GetEntityClassname(entity, sClassname, sizeof(sClassname));
 
+	float vecPosition[3];
+	GetEntPropVector(entity, Prop_Data, "m_vecOrigin", vecPosition);
+
 	if (StrEqual(sClassname, "tf_projectile_energy_ring"))
 	{
 		int client = GetEntPropEnt(entity, Prop_Data, "m_hOwnerEntity");
@@ -65,58 +84,68 @@ public void OnEntityDestroyed(int entity)
 
 		int weapon = GetActiveWeapon(client);
 
-		if (g_Setting_Wunderwaffe[weapon])
+		if (!IsValidEntity(weapon) || !g_Setting_Wunderwaffe[weapon])
+			return;
+		
+		float vecAngles[3];
+		GetClientEyeAngles(client, vecAngles);
+
+		int projectile = CreateEntityByName("tf_projectile_energy_ball");
+
+		if (IsValidEntity(projectile))
 		{
-			float vecAngles[3];
-			GetClientEyeAngles(client, vecAngles);
-
-			float vecPosition[3];
-			GetEntPropVector(entity, Prop_Data, "m_vecOrigin", vecPosition);
+			float vBuffer[3];
+			GetAngleVectors(vecAngles, vBuffer, NULL_VECTOR, NULL_VECTOR);
 			
-			float speed = 100.0;
-			float damage = 1000.0;
-			float radius = 500.0;
+			float vVelocity[3];
+			vVelocity[0] = vBuffer[0] * g_Setting_Speed[weapon];
+			vVelocity[1] = vBuffer[1] * g_Setting_Speed[weapon];
+			vVelocity[2] = vBuffer[2] * g_Setting_Speed[weapon];
 
-			RocketsGameFired(client, vecPosition, vecAngles, speed, damage, radius);
+			TeleportEntity(projectile, vecPosition, vecAngles, vVelocity);
+
+			SetEntData(projectile, FindSendPropInfo("CTFProjectile_Rocket", "m_iTeamNum"), GetClientTeam(client), true);
+			SetEntData(projectile, FindSendPropInfo("CTFProjectile_Rocket", "m_bCritical"), false, true);
+			SetEntPropEnt(projectile, Prop_Send, "m_hOwnerEntity", client);
+
+			SetEntPropFloat(projectile, Prop_Data, "m_flRadius", g_Setting_Radius[weapon]);
+			SetEntPropFloat(projectile, Prop_Data, "m_flModelScale", g_Setting_Radius[weapon]);
+
+			DispatchSpawn(projectile);
+
+			CreateParticle("critgun_weaponmodel_blu", vecPosition, 0.5);
+
+			g_Damage[projectile] = g_Setting_Damage[weapon];
+			g_Radius[projectile] = g_Setting_Radius[weapon];
 		}
 	}
-}
-
-void RocketsGameFired(int client, float vPosition[3], float vAngles[3], float flSpeed = 650.0, float flDamage = 800.0, float flRadius = 200.0, bool bCritical = true)
-{
-	int iRocket = CreateEntityByName("tf_projectile_energy_ball");
-
-	if (IsValidEntity(iRocket))
+	else if (StrEqual(sClassname, "tf_projectile_energy_ball"))
 	{
-		float vBuffer[3];
-		GetAngleVectors(vAngles, vBuffer, NULL_VECTOR, NULL_VECTOR);
+		int client = GetEntPropEnt(entity, Prop_Data, "m_hOwnerEntity");
+
+		if (client < 1 || client > MaxClients)
+			return;
 		
-		float vVelocity[3];
-		vVelocity[0] = vBuffer[0] * flSpeed;
-		vVelocity[1] = vBuffer[1] * flSpeed;
-		vVelocity[2] = vBuffer[2] * flSpeed;
+		int weapon = GetActiveWeapon(client);
 
-		TeleportEntity(iRocket, vPosition, vAngles, vVelocity);
-
-		SetEntData(iRocket, FindSendPropInfo("CTFProjectile_Rocket", "m_iTeamNum"), GetClientTeam(client), true);
-		SetEntData(iRocket, FindSendPropInfo("CTFProjectile_Rocket", "m_bCritical"), bCritical, true);
-		SetEntPropEnt(iRocket, Prop_Send, "m_hOwnerEntity", client);
-
-		SetEntPropFloat(iRocket, Prop_Data, "m_flRadius", flRadius);
-		SetEntPropFloat(iRocket, Prop_Data, "m_flModelScale", flRadius);
-
-		DispatchSpawn(iRocket);
-
-		CreateParticle("critgun_weaponmodel_blu", vPosition, 0.5);
-
-		int entity = -1;
-		while ((entity = FindEntityByClassname(entity, "tf_zombie")) != -1)
+		int zombie = -1; float vecZombiePos[3];
+		while ((zombie = FindEntityByClassname(zombie, "base_boss")) != -1)
 		{
-			float vecZombiePos[3];
-			GetEntPropVector(entity, Prop_Data, "m_vecOrigin", vecZombiePos);
+			GetEntPropVector(zombie, Prop_Data, "m_vecOrigin", vecZombiePos);
 
-			if (GetVectorDistance(vPosition, vecZombiePos) <= flRadius)
-				SDKHooks_TakeDamage(entity, 0, client, flDamage, DMG_BLAST, GetActiveWeapon(client), NULL_VECTOR, vPosition);
+			if (GetVectorDistance(vecPosition, vecZombiePos) <= g_Radius[entity])
+				SDKHooks_TakeDamage(zombie, 0, client, g_Damage[entity], DMG_BLAST, weapon, NULL_VECTOR, vecZombiePos);
+		}
+
+		for (int i = 1; i <= MaxClients; i++)
+		{
+			if (!IsClientInGame(i) || !IsPlayerAlive(i) || GetClientTeam(i) == GetClientTeam(client))
+				continue;
+			
+			GetClientAbsOrigin(i, vecZombiePos);
+
+			if (GetVectorDistance(vecPosition, vecZombiePos) <= g_Radius[entity])
+				SDKHooks_TakeDamage(i, 0, client, g_Damage[entity], DMG_BLAST, weapon, NULL_VECTOR, vecZombiePos);
 		}
 	}
 }

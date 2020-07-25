@@ -7,7 +7,7 @@
 //Defines
 #define PLUGIN_NAME "[TF2] Items"
 #define PLUGIN_DESCRIPTION "A simple and effective TF2 items plugin which allows for items, weapons and cosmetic customizations."
-#define PLUGIN_VERSION "1.0.5"
+#define PLUGIN_VERSION "1.0.6"
 
 #define EF_NODRAW 32
 
@@ -610,7 +610,7 @@ bool ParseItemConfig(const char[] file)
 		do
 		{
 			kv.GetSectionName(sAttributeName, sizeof(sAttributeName));
-
+			
 			if (kv.GotoFirstSubKey(false))
 			{
 				StringMap attributedata = new StringMap();
@@ -1179,7 +1179,7 @@ public Action Command_Items(int client, int args)
 	g_ItemClasses.GetString(sName, sClass, sizeof(sClass));
 	if (strlen(sClass) > 0 && StrContains(sClass, sCurrentClass, false) == -1)
 	{
-		CPrintToChat(client, "You must be a %s to equip this item.", sClass);
+		CPrintToChat(client, "You must be a {crimson}%s {default}to equip this item.", sClass);
 		return Plugin_Handled;
 	}
 
@@ -1520,7 +1520,7 @@ int GiveItem(int client, const char[] name, bool message = false)
 		EquipWeaponSlot(client, slot);
 
 	if (message)
-		CPrintToChat(client, "Item Equipped: %s", name);
+		CPrintToChat(client, "Item Equipped: {crimson}%s", name);
 	
 	g_IsCustom[entity] = true;
 
@@ -1551,8 +1551,8 @@ void AttachViewmodel(int client, TFClassType class, int item, char[] viewmodel, 
 		return;
 	}
 	
-	int iViewModel = CreateEntityByName("tf_wearable_vm");
-	if (IsValidEntity(iViewModel))
+	int viewmodel1 = CreateEntityByName("tf_wearable_vm");
+	if (IsValidEntity(viewmodel1))
 	{
 		char sArms[PLATFORM_MAX_PATH];
 		switch (class)
@@ -1568,95 +1568,96 @@ void AttachViewmodel(int client, TFClassType class, int item, char[] viewmodel, 
 			case TFClass_Spy: Format(sArms, sizeof(sArms), "models/weapons/c_models/c_spy_arms.mdl");
 		}
 
-		SetEntProp(iViewModel, Prop_Send, "m_nModelIndex", PrecacheModel(sArms));
-		SetEntProp(iViewModel, Prop_Send, "m_fEffects", EF_BONEMERGE|EF_BONEMERGE_FASTCULL);
-		SetEntProp(iViewModel, Prop_Send, "m_iTeamNum", GetClientTeam(client));
-		SetEntProp(iViewModel, Prop_Send, "m_usSolidFlags", FSOLID_NOT_SOLID);
-		SetEntProp(iViewModel, Prop_Send, "m_CollisionGroup", COLLISION_GROUP_WEAPON);
+		SetEntProp(viewmodel1, Prop_Send, "m_nModelIndex", PrecacheModel(sArms));
+		SetEntProp(viewmodel1, Prop_Send, "m_fEffects", EF_BONEMERGE|EF_BONEMERGE_FASTCULL);
+		SetEntProp(viewmodel1, Prop_Send, "m_iTeamNum", GetClientTeam(client));
+		SetEntProp(viewmodel1, Prop_Send, "m_usSolidFlags", FSOLID_NOT_SOLID);
+		SetEntProp(viewmodel1, Prop_Send, "m_CollisionGroup", COLLISION_GROUP_WEAPON);
 
-		DispatchSpawn(iViewModel);
+		DispatchSpawn(viewmodel1);
 
 		SetVariantString("!activator");
-		ActivateEntity(iViewModel);
+		ActivateEntity(viewmodel1);
 
-		Call_EquipWearable(client, iViewModel);
+		Call_EquipWearable(client, viewmodel1);
 			
-		SetEntPropEnt(iViewModel, Prop_Send, "m_hEffectEntity", item);
-		SDKHook(iViewModel, SDKHook_SetTransmit, Hook_VMTransmit);
+		SetEntPropEnt(viewmodel1, Prop_Send, "m_hEffectEntity", item);
+		SDKHook(viewmodel1, SDKHook_SetTransmit, OnWeaponTransmit);
 	}
 	
-	int iWeaponModel = CreateEntityByName("tf_wearable_vm");
-	if (IsValidEntity(iWeaponModel))
+	int viewmodel2 = CreateEntityByName("tf_wearable_vm");
+	if (IsValidEntity(viewmodel2))
 	{
-		SetEntProp(iWeaponModel, Prop_Send, "m_nModelIndex", PrecacheModel(viewmodel));
-		SetEntProp(iWeaponModel, Prop_Send, "m_iItemDefinitionIndex", index);
-		SetEntProp(iWeaponModel, Prop_Send, "m_fEffects", EF_BONEMERGE|EF_BONEMERGE_FASTCULL);
-		SetEntProp(iWeaponModel, Prop_Send, "m_iTeamNum", GetClientTeam(client));
-		SetEntProp(iWeaponModel, Prop_Send, "m_usSolidFlags", FSOLID_NOT_SOLID);
-		SetEntProp(iWeaponModel, Prop_Send, "m_CollisionGroup", COLLISION_GROUP_WEAPON);
+		SetEntProp(viewmodel2, Prop_Send, "m_nModelIndex", PrecacheModel(viewmodel));
+		SetEntProp(viewmodel2, Prop_Send, "m_iItemDefinitionIndex", index);
+		SetEntProp(viewmodel2, Prop_Send, "m_fEffects", EF_BONEMERGE|EF_BONEMERGE_FASTCULL);
+		SetEntProp(viewmodel2, Prop_Send, "m_iTeamNum", GetClientTeam(client));
+		SetEntProp(viewmodel2, Prop_Send, "m_usSolidFlags", FSOLID_NOT_SOLID);
+		SetEntProp(viewmodel2, Prop_Send, "m_CollisionGroup", COLLISION_GROUP_WEAPON);
 		
-		DispatchSpawn(iWeaponModel);
+		DispatchSpawn(viewmodel2);
 
 		SetVariantString("!activator");
-		ActivateEntity(iWeaponModel);
+		ActivateEntity(viewmodel2);
 
-		Call_EquipWearable(client, iWeaponModel);
+		Call_EquipWearable(client, viewmodel2);
 
-		SetEntPropEnt(iWeaponModel, Prop_Send, "m_hEffectEntity", item);
-		SDKHook(iWeaponModel, SDKHook_SetTransmit, Hook_VMTransmit);
+		SetEntPropEnt(viewmodel2, Prop_Send, "m_hEffectEntity", item);
+		SDKHook(viewmodel2, SDKHook_SetTransmit, OnWeaponTransmit);
 	}
 }
 
-public Action Hook_VMTransmit(int iEnt, int iOther)
+public Action OnWeaponTransmit(int entity, int other)
 {
-	if (iEnt == -1) 
+	if (entity == -1) 
 		return Plugin_Continue;
 	
-	int iOwner = GetEntPropEnt(iEnt, Prop_Send, "m_hOwnerEntity");
+	int owner = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
 	
-	if (0 < iOwner <= MaxClients)
+	if (0 < owner <= MaxClients)
 	{
-		if (iOwner != iOther) return Plugin_Continue;
+		if (owner != other)
+			return Plugin_Continue;
 		
-		int iActiveWep = GetEntPropEnt(iOwner, Prop_Send, "m_hActiveWeapon");
-		int iAttachedWep = GetEntPropEnt(iEnt, Prop_Send, "m_hEffectEntity");
+		int active = GetEntPropEnt(owner, Prop_Send, "m_hActiveWeapon");
+		int attached = GetEntPropEnt(entity, Prop_Send, "m_hEffectEntity");
 		
-		if (iAttachedWep > MaxClients && GetEntProp(iAttachedWep, Prop_Send, "m_bBeingRepurposedForTaunt"))
-			SetEntProp(iAttachedWep, Prop_Send, "m_nModelIndexOverrides", 0);
-		else if (iAttachedWep > -1)
-			SetEntProp(iAttachedWep, Prop_Send, "m_nModelIndexOverrides", GetEntProp(iAttachedWep, Prop_Send, "m_iWorldModelIndex"));
+		if (attached > MaxClients && GetEntProp(attached, Prop_Send, "m_bBeingRepurposedForTaunt"))
+			SetEntProp(attached, Prop_Send, "m_nModelIndexOverrides", 0);
+		else if (attached > -1)
+			SetEntProp(attached, Prop_Send, "m_nModelIndexOverrides", GetEntProp(attached, Prop_Send, "m_iWorldModelIndex"));
 		
-		if (iActiveWep == iAttachedWep)
+		if (active == attached)
 		{
-			int effects = GetEntProp(iEnt, Prop_Send, "m_fEffects");
+			int effects = GetEntProp(entity, Prop_Send, "m_fEffects");
 			
 			if ((effects & EF_NODRAW))
-				SetEntProp(iEnt, Prop_Send, "m_fEffects", GetEntProp(iEnt, Prop_Send, "m_fEffects") &~ EF_NODRAW);
+				SetEntProp(entity, Prop_Send, "m_fEffects", GetEntProp(entity, Prop_Send, "m_fEffects") &~ EF_NODRAW);
 			
-			int iRealViewModels = MaxClients + 1;
-			while ((iRealViewModels = FindEntityByClassname(iRealViewModels, "tf_viewmodel")) > MaxClients)
+			int viewmodel = MaxClients + 1;
+			while ((viewmodel = FindEntityByClassname(viewmodel, "tf_viewmodel")) > MaxClients)
 			{
-				int iViewOwner = GetEntPropEnt(iRealViewModels, Prop_Send, "m_hOwner");
+				int iViewOwner = GetEntPropEnt(viewmodel, Prop_Send, "m_hOwner");
 				
-				if (iViewOwner == iOwner)
-					SetEntProp(iRealViewModels, Prop_Send, "m_fEffects", GetEntProp(iRealViewModels, Prop_Send, "m_fEffects")|EF_NODRAW);
+				if (iViewOwner == owner)
+					SetEntProp(viewmodel, Prop_Send, "m_fEffects", GetEntProp(viewmodel, Prop_Send, "m_fEffects") | EF_NODRAW);
 			}
 		}
 		else
 		{
-			int effects = GetEntProp(iEnt, Prop_Send, "m_fEffects");
+			int effects = GetEntProp(entity, Prop_Send, "m_fEffects");
 			
 			if (!(effects & EF_NODRAW))
 			{
-				SetEntProp(iEnt, Prop_Send, "m_fEffects", effects|EF_NODRAW);
+				SetEntProp(entity, Prop_Send, "m_fEffects", effects|EF_NODRAW);
 				
-				int iRealViewModels = MaxClients + 1;
-				while ((iRealViewModels = FindEntityByClassname(iRealViewModels, "tf_viewmodel")) > MaxClients)
+				int viewmodel = MaxClients + 1;
+				while ((viewmodel = FindEntityByClassname(viewmodel, "tf_viewmodel")) > MaxClients)
 				{
-					int iViewOwner = GetEntPropEnt(iRealViewModels, Prop_Send, "m_hOwner");
+					int iViewOwner = GetEntPropEnt(viewmodel, Prop_Send, "m_hOwner");
 					
-					if (iViewOwner == iOwner)
-						SetEntProp(iRealViewModels, Prop_Send, "m_fEffects", GetEntProp(iRealViewModels, Prop_Send, "m_fEffects") &~ EF_NODRAW);
+					if (iViewOwner == owner)
+						SetEntProp(viewmodel, Prop_Send, "m_fEffects", GetEntProp(viewmodel, Prop_Send, "m_fEffects") &~ EF_NODRAW);
 				}
 			}
 		}
@@ -1664,7 +1665,7 @@ public Action Hook_VMTransmit(int iEnt, int iOther)
 		return Plugin_Continue;
 	}
 
-	AcceptEntityInput(iEnt, "Kill");
+	AcceptEntityInput(entity, "Kill");
 	return Plugin_Continue;
 }
 
@@ -1743,7 +1744,7 @@ public int MenuHandler_OpenSpawnItemClassMenu(Menu menu, MenuAction action, int 
 
 void SetSpawnItem(int client, const char[] class, int slot, const char[] name)
 {
-	CPrintToChat(client, "%s has been equipped for the %s class and the %i slot.", name, class, slot);
+	CPrintToChat(client, "{crimson}%s {default}has been equipped for the {crimson}%s {default}class and the {crimson}%i {default}slot.", name, class, slot);
 }
 
 public int Native_AllowAttributeRegisters(Handle plugin, int numParams)
@@ -2585,14 +2586,18 @@ void ConvertCW3ToTF2W(int client, const char[] config)
 public int Native_RefillMag(Handle plugin, int numParams)
 {
 	int weapon = GetNativeCell(1);
-	SetClip(weapon, g_ItemsData[weapon].mag);
+	SetEntProp(weapon, Prop_Data, "m_iClip1", g_ItemsData[weapon].mag);
 }
 
 public int Native_RefillAmmo(Handle plugin, int numParams)
 {
 	int client = GetNativeCell(1);
 	int weapon = GetNativeCell(2);
-	SetAmmo(client, weapon, g_ItemsData[weapon].ammo);
+
+	int iAmmoType = GetEntProp(weapon, Prop_Send, "m_iPrimaryAmmoType");
+	
+	if (iAmmoType != -1)
+		SetEntProp(client, Prop_Data, "m_iAmmo", g_ItemsData[weapon].ammo, _, iAmmoType);
 }
 
 public int Native_EquipWearable(Handle plugin, int numParams)

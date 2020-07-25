@@ -128,15 +128,14 @@ public Action Timer_Pull(Handle timer, DataPack pack)
 		if (client > 0)
 			bHasBlackHole[client] = false;
 		
-		EmitSoundToAll("undead/weapons/moonbeam_loop.wav", SOUND_FROM_WORLD, SNDCHAN_AUTO, SNDLEVEL_NORMAL, SND_STOPLOOPING, SNDVOL_NORMAL, SNDPITCH_NORMAL, -1, NULL_VECTOR, NULL_VECTOR, true, 0.0);
-		
+		StopSound(0, SNDCHAN_USER_BASE + 14, "undead/weapons/moonbeam_loop.wav");
 		return Plugin_Stop;
 	}
 	
 	pack.Reset();
 	pack.WriteFloat(time + 0.1);
 	
-	EmitSoundToAll("undead/weapons/moonbeam_loop.wav", SOUND_FROM_WORLD, SNDCHAN_AUTO, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL, -1, pos, NULL_VECTOR, true, 0.0);
+	EmitSoundToAll("undead/weapons/moonbeam_loop.wav", SOUND_FROM_WORLD, SNDCHAN_USER_BASE + 14, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL, SOUND_FROM_WORLD, pos);
 
 	int entity = INVALID_ENT_INDEX;
 	while ((entity = FindEntityByClassname(entity, "base_boss")) != INVALID_ENT_INDEX)
@@ -163,6 +162,35 @@ public Action Timer_Pull(Handle timer, DataPack pack)
 		}
 
 		AcceptEntityInput(entity, "Kill");
+	}
+
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i) || !IsPlayerAlive(i) || GetClientTeam(i) != 2)
+			continue;
+		
+		float cpos[3];
+		GetClientAbsOrigin(i, cpos);
+
+		if (GetVectorDistance(pos, cpos) > 200.0)
+			continue;
+
+		float velocity[3];
+		MakeVectorFromPoints(pos, cpos, velocity);
+		NormalizeVector(velocity, velocity);
+		ScaleVector(velocity, -200.0);
+		TeleportEntity(i, NULL_VECTOR, NULL_VECTOR, velocity);
+
+		float fSize = GetEntPropFloat(i, Prop_Send, "m_flModelScale");
+
+		if (fSize > 0.2)
+		{
+			SetEntPropFloat(i, Prop_Send, "m_flModelScale", fSize - 0.1);
+			SDKHooks_TakeDamage(i, -1, client, 1.0);
+			continue;
+		}
+
+		ForcePlayerSuicide(i);
 	}
 
 	return Plugin_Continue;

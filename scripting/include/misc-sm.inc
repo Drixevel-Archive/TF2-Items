@@ -2103,6 +2103,11 @@ stock void AnglesToVelocity(const float pAngles[3], float pScale, float pResults
 	ScaleVector(pResults, pScale);
 }
 
+stock void VelocityToAngles(const float velocity[3], float angles[3])
+{
+	GetVectorAngles(velocity, angles);
+}
+
 stock void TeleportTo(int client, int target)
 {
 	float vecOrigin[3];
@@ -2475,10 +2480,10 @@ stock bool GetCeilingCoordinates(float start[3], float buffer[3], float distance
 stock bool GetEntGroundCoordinates(int entity, float buffer[3], float distance = 0.0, float offset[3] = {0.0, 0.0, 0.0})
 {
 	float vecOrigin[3];
-	GetEntPropVector(entity, Prop_Data, "m_vecOrigin", vecOrigin);
+	GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", vecOrigin);
 
 	float vecLook[3] = {90.0, 0.0, 0.0};
-	Handle trace = TR_TraceRayFilterEx(vecOrigin, vecLook, MASK_SOLID_BRUSHONLY, RayType_Infinite, ___TraceEntityFilter_NoPlayers);
+	Handle trace = TR_TraceRayFilterEx(vecOrigin, vecLook, MASK_SOLID_BRUSHONLY, RayType_Infinite, ___TraceEntityFilter_NoPlayers, entity);
 
 	if (TR_DidHit(trace))
 	{
@@ -2486,7 +2491,7 @@ stock bool GetEntGroundCoordinates(int entity, float buffer[3], float distance =
 		delete trace;
 		
 		buffer[0] += offset[0]; buffer[1] += offset[1]; buffer[2] += offset[2];
-		return (distance > 0.0 && vecOrigin[2] - buffer[2] > distance);
+		return (distance <= 0.0) || (distance > 0.0 && vecOrigin[2] - buffer[2] > distance);
 	}
 
 	delete trace;
@@ -2496,10 +2501,10 @@ stock bool GetEntGroundCoordinates(int entity, float buffer[3], float distance =
 stock bool GetEntCeilingCoordinates(int entity, float buffer[3], float distance = 0.0, float offset[3] = {0.0, 0.0, 0.0})
 {
 	float vecOrigin[3];
-	GetEntPropVector(entity, Prop_Data, "m_vecOrigin", vecOrigin);
+	GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", vecOrigin);
 
 	float vecLook[3] = {-90.0, 0.0, 0.0};
-	Handle trace = TR_TraceRayFilterEx(vecOrigin, vecLook, MASK_SOLID_BRUSHONLY, RayType_Infinite, ___TraceEntityFilter_NoPlayers);
+	Handle trace = TR_TraceRayFilterEx(vecOrigin, vecLook, MASK_SOLID_BRUSHONLY, RayType_Infinite, ___TraceEntityFilter_NoPlayers, entity);
 
 	if (TR_DidHit(trace))
 	{
@@ -2507,7 +2512,7 @@ stock bool GetEntCeilingCoordinates(int entity, float buffer[3], float distance 
 		delete trace;
 		
 		buffer[0] += offset[0]; buffer[1] += offset[1]; buffer[2] += offset[2];
-		return (distance > 0.0 && vecOrigin[2] - buffer[2] > distance);
+		return (distance <= 0.0) || (distance > 0.0 && vecOrigin[2] - buffer[2] > distance);
 	}
 
 	delete trace;
@@ -2516,7 +2521,7 @@ stock bool GetEntCeilingCoordinates(int entity, float buffer[3], float distance 
 
 public bool ___TraceEntityFilter_NoPlayers(int entity, int contentsMask, any data)
 {
-	return entity > MaxClients;
+	return entity != data;
 }
 
 stock bool TeleportToDestination(int client, const char[] name, bool keep_velocity = false)

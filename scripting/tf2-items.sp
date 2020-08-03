@@ -7,7 +7,7 @@
 //Defines
 #define PLUGIN_NAME "[TF2] Items"
 #define PLUGIN_DESCRIPTION "A simple and effective TF2 items plugin which allows for items, weapons and cosmetic customizations."
-#define PLUGIN_VERSION "1.0.6"
+#define PLUGIN_VERSION "1.0.9"
 
 #define EF_NODRAW 32
 
@@ -122,6 +122,8 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("TF2Items_GetItemKeyInt", Native_GetItemKeyInt);
 	CreateNative("TF2Items_GetItemKeyFloat", Native_GetItemKeyFloat);
 	CreateNative("TF2Items_GetItemKeyString", Native_GetItemKeyString);
+
+	CreateNative("TF2Items_OpenInfoPanel", Native_OpenInfoPanel);
 
 	g_Forward_OnRegisterAttributes = CreateGlobalForward("TF2Items_OnRegisterAttributes", ET_Event);
 	g_Forward_OnRegisterAttributesPost = CreateGlobalForward("TF2Items_OnRegisterAttributesPost", ET_Ignore);
@@ -610,6 +612,7 @@ bool ParseItemConfig(const char[] file)
 		do
 		{
 			kv.GetSectionName(sAttributeName, sizeof(sAttributeName));
+			sAttributeName[0] = CharToLower(sAttributeName[0]);
 			
 			if (kv.GotoFirstSubKey(false))
 			{
@@ -1202,7 +1205,7 @@ public Action Command_Items(int client, int args)
 		return Plugin_Handled;
 	}
 
-	GiveItem(client, sName, true);
+	GiveItem(client, sName, true, true);
 	return Plugin_Handled;
 }
 
@@ -1271,6 +1274,7 @@ void OpenItemMenu(int client, const char[] name)
 	menu.SetTitle("Information for item: %s%s", name, strlen(sDescription) > 0 ? sDescription : "\n ");
 
 	menu.AddItem("equip", "Equip Item");
+	menu.AddItem("info", "Item Information");
 	menu.AddItem("spawn", "Spawn with Item");
 
 	ArrayList authors;
@@ -1306,8 +1310,10 @@ public int MenuHandler_Item(Menu menu, MenuAction action, int param1, int param2
 					return;
 				}
 
-				GiveItem(param1, sName, true);
+				GiveItem(param1, sName, true, true);
 			}
+			else if (StrEqual(sAction, "info"))
+				OpenInfoPanel(param1, sName);
 			else if (StrEqual(sAction, "spawn"))
 				OpenSpawnItemClassMenu(param1, sName);
 			else if (StrEqual(sAction, "authors"))
@@ -1335,7 +1341,7 @@ public Action Command_ReloadAttributes(int client, int args)
 	return Plugin_Handled;
 }
 
-int GiveItem(int client, const char[] name, bool message = false)
+int GiveItem(int client, const char[] name, bool message = false, bool inspect = false)
 {
 	if (client < 1 || client > MaxClients || strlen(name) == 0)
 		return -1;
@@ -1513,7 +1519,6 @@ int GiveItem(int client, const char[] name, bool message = false)
 	}
 
 	ExecuteItemAction(client, entity, name, "apply");
-
 	EquipPlayerWeapon(client, entity);
 	
 	if (StrContains(sEntity, "tf_weapon", false) == 0)
@@ -1523,6 +1528,13 @@ int GiveItem(int client, const char[] name, bool message = false)
 		CPrintToChat(client, "Item Equipped: {crimson}%s", name);
 	
 	g_IsCustom[entity] = true;
+	
+	if (inspect)
+	{
+		KeyValues kv = new KeyValues("inspect_weapon");
+		kv.SetSectionName("+inspect_server");
+		FakeClientCommandKeyValues(client, kv);
+	}
 
 	return entity;
 }
@@ -2117,7 +2129,7 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int iItemDe
 	return Plugin_Changed;
 }
 
-Handle ApplyItemOverrides(int client, int iItemDefinitionIndex)
+stock Handle ApplyItemOverrides(int client, int iItemDefinitionIndex)
 {
 	char sSteamID[64];
 	GetClientAuthId(client, AuthId_Steam2, sSteamID, sizeof(sSteamID));
@@ -2211,8 +2223,9 @@ public int Native_GiveItem(Handle plugin, int numParams)
 	GetNativeString(2, sName, sizeof(sName));
 
 	bool message = GetNativeCell(3);
+	bool inspect = GetNativeCell(4);
 
-	return GiveItem(client, sName, message);
+	return GiveItem(client, sName, message, inspect);
 }
 
 public int Native_IsItemCustom(Handle plugin, int numParams)
@@ -2706,4 +2719,83 @@ void ShowAuthors(int client, const char[] item)
 public int MenuAction_Authors(Menu menu, MenuAction action, int param1, int param2)
 {
 	OpenItemMenu(param1, g_BackItem[param1]);
+}
+
+public int Native_OpenInfoPanel(Handle plugin, int numParams)
+{
+	int client = GetNativeCell(1);
+
+	int size;
+	GetNativeStringLength(2, size); size++;
+
+	char[] name = new char[size];
+	GetNativeString(2, name, size);
+	
+	bool back = GetNativeCell(3);
+
+	OpenInfoPanel(client, name, back);
+}
+bool g_CanBack[MAXPLAYERS + 1];
+char g_WeaponInfo[MAXPLAYERS + 1][MAX_NAME_LENGTH];
+void OpenInfoPanel(int client, const char[] name, bool back = true)
+{
+	Panel panel = new Panel();
+
+	char title[256];
+	FormatEx(title, sizeof(title), "%s Item Information", name);
+	panel.SetTitle(title);
+
+	StringMap attributesdata;
+	g_ItemAttributesData.GetValue(name, attributesdata);
+	
+	char sAttributesList[MAX_ATTRIBUTE_NAME_LENGTH + 12];
+	FormatEx(sAttributesList, sizeof(sAttributesList), "%s_list", name);
+
+	ArrayList attributeslist;
+	g_ItemAttributesData.GetValue(sAttributesList, attributeslist);
+	
+	char sAttribute[MAX_ATTRIBUTE_NAME_LENGTH]; StringMap attributedata; char sDisplay[128];
+	for (int i = 0; i < attributeslist.Length; i++)
+	{
+		attributeslist.GetString(i, sAttribute, sizeof(sAttribute));
+		FormatEx(sDisplay, sizeof(sDisplay), " - %s", sAttribute);
+		panel.DrawText(sDisplay);
+		
+		attributesdata.GetValue(sAttribute, attributedata);
+		
+		StringMapSnapshot snap = attributedata.Snapshot();
+
+		for (int x = 0; x < snap.Length; x++)
+		{
+			int size = snap.KeyBufferSize(x);
+
+			char[] sKey = new char[size];
+			snap.GetKey(x, sKey, size);
+
+			float value;
+			attributedata.GetValue(sKey, value);
+
+			FormatEx(sDisplay, sizeof(sDisplay), " - %s: %.2f", sKey, value);
+			panel.DrawText(sDisplay);
+		}
+
+		delete snap;
+	}
+	
+	g_CanBack[client] = back;
+	strcopy(g_WeaponInfo[client], MAX_NAME_LENGTH, name);
+	
+	if (back)
+		panel.DrawItem("Back");
+	
+	panel.DrawItem("Exit");
+
+	panel.Send(client, MenuAction_Info, MENU_TIME_FOREVER);
+	delete panel;
+}
+
+public int MenuAction_Info(Menu menu, MenuAction action, int param1, int param2)
+{
+	if (action == MenuAction_Select && param2 == (g_CanBack[param1] ? 1 : 2))
+		OpenItemMenu(param1, g_WeaponInfo[param1]);
 }

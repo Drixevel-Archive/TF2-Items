@@ -67,18 +67,18 @@ public void OnEntityCreated(int entity, const char[] classname)
 
 public void OnArrowCreated(int entity)
 {
-	if (IsValidEntity(entity))
-	{
-		int client = GetEntPropEnt(entity, Prop_Data, "m_hOwnerEntity");
+	if (!IsValidEntity(entity))
+		return;
+	
+	int client = GetEntPropEnt(entity, Prop_Data, "m_hOwnerEntity");
 
-		if (client > 0)
-		{
-			int weapon = GetActiveWeapon(client);
+	if (client == 0)
+		return;
+	
+	int weapon = GetActiveWeapon(client);
 
-			if (g_Setting_Raygun[weapon])
-				ReplaceArrowProjectile(client, entity, weapon);
-		}
-	}
+	if (g_Setting_Raygun[weapon])
+		ReplaceArrowProjectile(client, entity, weapon);
 }
 
 void ReplaceArrowProjectile(int client, int entity, int weapon)

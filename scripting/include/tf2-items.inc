@@ -16,7 +16,7 @@ typedef RegisterAttribute_OnAction = function void (int client, int item, const 
 native bool TF2Items_AllowAttributeRegisters();
 native bool TF2Items_RegisterAttribute(const char[] attrib, RegisterAttribute_OnAction onaction);
 
-native int TF2Items_GiveItem(int client, const char[] name, bool message = false);
+native int TF2Items_GiveItem(int client, const char[] name, bool message = false, bool inspect = false);
 native bool TF2Items_IsItemCustom(int item);
 
 native void TF2Items_RefillMag(int item);
@@ -28,6 +28,8 @@ native int TF2Items_EquipViewmodel(int client, char[] model = "");
 native int TF2Items_GetItemKeyInt(const char[] item, const char[] key);
 native float TF2Items_GetItemKeyFloat(const char[] item, const char[] key);
 native bool TF2Items_GetItemKeyString(const char[] item, const char[] key, char[] buffer, int size);
+
+native void TF2Items_OpenInfoPanel(int client, const char[] item, bool back = false);
 
 //Forwards
 forward Action TF2Items_OnRegisterAttributes();
@@ -57,6 +59,8 @@ public void __pl_tf2_items_SetNTVOptional()
 	MarkNativeAsOptional("TF2Items_GetItemKeyInt");
 	MarkNativeAsOptional("TF2Items_GetItemKeyFloat");
 	MarkNativeAsOptional("TF2Items_GetItemKeyString");
+
+	MarkNativeAsOptional("TF2Items_OpenInfoPanel");
 }
 #endif
 

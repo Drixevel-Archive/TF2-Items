@@ -7,8 +7,11 @@
 
 //Sourcemod Includes
 #include <sourcemod>
-#include <sourcemod-misc>
-#include <tf2-weapons>
+#include <sdktools>
+#include <sdkhooks>
+#include <tf2-items>
+#include <misc-sm>
+#include <misc-tf>
 
 //Globals
 bool g_FireProjectiles[MAX_ENTITY_LIMIT + 1];
@@ -46,13 +49,13 @@ public void OnPluginStart()
 
 public void OnConfigsExecuted()
 {
-	if (TF2Weapons_AllowAttributeRegisters())
-		TF2Weapons_OnRegisterAttributesPost();
+	if (TF2Items_AllowAttributeRegisters())
+		TF2Items_OnRegisterAttributesPost();
 }
 
-public void TF2Weapons_OnRegisterAttributesPost()
+public void TF2Items_OnRegisterAttributesPost()
 {
-	if (!TF2Weapons_RegisterAttribute(ATTRIBUTE_NAME, OnAttributeAction))
+	if (!TF2Items_RegisterAttribute(ATTRIBUTE_NAME, OnAttributeAction))
 		LogError("Error while registering the '%s' attribute.", ATTRIBUTE_NAME);
 }
 
@@ -148,7 +151,7 @@ public void OnPostThink(int client)
 	VectorAddRotatedOffset(vecAngles, vecOrigin, vecOffsets);
 
 	if (strlen(g_Setting_SpawnParticle[weapon]) > 0)
-		CreateTempParticle(g_Setting_SpawnParticle[weapon], vecOrigin);
+		TE_Particle(g_Setting_SpawnParticle[weapon], vecOrigin);
 
 	int team = (g_Setting_FriendlyFire[weapon] && client > 0) ? GetClientTeam(client) : 0;
 

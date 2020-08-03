@@ -137,27 +137,29 @@ public Action Timer_Pull(Handle timer, DataPack pack)
 	
 	EmitSoundToAll("undead/weapons/moonbeam_loop.wav", SOUND_FROM_WORLD, SNDCHAN_USER_BASE + 14, SNDLEVEL_NORMAL, SND_NOFLAGS, SNDVOL_NORMAL, SNDPITCH_NORMAL, SOUND_FROM_WORLD, pos);
 
+	float cpos[3];
+	float velocity[3];
+	float fSize;
+
 	int entity = INVALID_ENT_INDEX;
 	while ((entity = FindEntityByClassname(entity, "base_boss")) != INVALID_ENT_INDEX)
 	{
-		float cpos[3];
 		GetEntPropVector(entity, Prop_Send, "m_vecOrigin", cpos);
 
 		if (GetVectorDistance(pos, cpos) > 200.0)
 			continue;
-
-		float velocity[3];
+		
 		MakeVectorFromPoints(pos, cpos, velocity);
 		NormalizeVector(velocity, velocity);
 		ScaleVector(velocity, -200.0);
 		TeleportEntity(entity, NULL_VECTOR, NULL_VECTOR, velocity);
 
-		float fSize = GetEntPropFloat(entity, Prop_Send, "m_flModelScale");
+		fSize = GetEntPropFloat(entity, Prop_Send, "m_flModelScale");
 
 		if (fSize > 0.2)
 		{
 			SetEntPropFloat(entity, Prop_Send, "m_flModelScale", fSize - 0.1);
-			SDKHooks_TakeDamage(entity, -1, client, 1.0);
+			SDKHooks_TakeDamage(entity, 0, client, 1.0);
 			continue;
 		}
 
@@ -169,24 +171,22 @@ public Action Timer_Pull(Handle timer, DataPack pack)
 		if (!IsClientInGame(i) || !IsPlayerAlive(i) || GetClientTeam(i) != 2)
 			continue;
 		
-		float cpos[3];
 		GetClientAbsOrigin(i, cpos);
 
 		if (GetVectorDistance(pos, cpos) > 200.0)
 			continue;
 
-		float velocity[3];
 		MakeVectorFromPoints(pos, cpos, velocity);
 		NormalizeVector(velocity, velocity);
 		ScaleVector(velocity, -200.0);
 		TeleportEntity(i, NULL_VECTOR, NULL_VECTOR, velocity);
 
-		float fSize = GetEntPropFloat(i, Prop_Send, "m_flModelScale");
+		fSize = GetEntPropFloat(i, Prop_Send, "m_flModelScale");
 
 		if (fSize > 0.2)
 		{
 			SetEntPropFloat(i, Prop_Send, "m_flModelScale", fSize - 0.1);
-			SDKHooks_TakeDamage(i, -1, client, 1.0);
+			SDKHooks_TakeDamage(i, 0, client, 1.0);
 			continue;
 		}
 

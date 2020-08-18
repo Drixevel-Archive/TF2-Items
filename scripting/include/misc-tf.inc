@@ -27,6 +27,11 @@
 #tryinclude <tf2attributes>
 #define REQUIRE_PLUGINS
 
+#define TFTeam_Spectator 1
+#define TFTeam_Red 2
+#define TFTeam_Blue 3
+#define TFTeam_Boss 5
+
 #define QUALITY_NAME_LENGTH 32
 #define ATTRIBUTE_NAME_LENGTH 64
 
@@ -204,10 +209,8 @@
 #define NEW_COLOR_YELLOW "\x07FFFF00"
 #define NEW_COLOR_YELLOWGREEN "\x079ACD32"
 
-#define TF2_MAX_CLASSES 10
-#define TF_MAX_CLASSES TF2_MAX_CLASSES
-#define TF2_MAX_SLOTS 8
-#define TF_MAX_SLOTS TF2_MAX_SLOTS
+#define TF_MAX_CLASSES 10
+#define TF_MAX_SLOTS 8
 
 #define PICKUP_TYPE_HEALTHKIT	1
 #define PICKUP_TYPE_AMMOBOX		2
@@ -3603,4 +3606,120 @@ stock bool TF2_RemoveCash(int client, int value)
 	
 	SetEntProp(client, Prop_Send, "m_nCurrency", total);
 	return true;
+}
+
+stock void TF2_CreateAnnotation(int client, float[3] origin, const char[] text, float lifetime = 10.0, const char[] sound = "vo/null.wav")
+{
+	if (!IsClientInGame(client))
+		return;
+	
+	Event event = CreateEvent("show_annotation");
+		
+	if (event == null)
+		return;
+		
+	event.SetFloat("worldPosX", origin[0]);
+	event.SetFloat("worldPosY", origin[1]);
+	event.SetFloat("worldPosZ", origin[2]);
+	event.SetInt("follow_entindex", client);
+	event.SetFloat("lifetime", lifetime);
+	event.SetInt("id", client + 8750);
+	event.SetString("text", text);
+	event.SetString("play_sound", sound);
+	event.SetString("show_effect", "0");
+	event.SetString("show_distance", "0");
+	event.Fire(false);
+}
+
+stock void TF2_CreateAnnotationToAll(float origin[3], const char[] text, float lifetime = 10.0, const char[] sound = "vo/null.wav")
+{
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i))
+			continue;
+	
+		Event event = CreateEvent("show_annotation");
+		
+		if (event == null)
+			continue;
+		
+		event.SetFloat("worldPosX", origin[0]);
+		event.SetFloat("worldPosY", origin[1]);
+		event.SetFloat("worldPosZ", origin[2]);
+		event.SetInt("follow_entindex", i);
+		event.SetFloat("lifetime", lifetime);
+		event.SetInt("id", i + 8750);
+		event.SetString("text", text);
+		event.SetString("play_sound", sound);
+		event.SetString("show_effect", "0");
+		event.SetString("show_distance", "0");
+		event.Fire(false);
+	}
+}
+
+stock int TF2_LookupParticle(const char[] name)
+{
+	int tblidx = FindStringTable("ParticleEffectNames");
+
+	char tmp[256];
+	int stridx = INVALID_STRING_INDEX;
+
+	for (int i = 0; i < GetStringTableNumStrings(tblidx); i++)
+	{
+		ReadStringTable(tblidx, i, tmp, sizeof(tmp));
+		
+		if (StrEqual(tmp, name, false))
+		{
+			stridx = i;
+			break;
+		}
+	}
+	
+	return stridx;
+}
+
+stock void TF2_Particle(char[] name, float origin[3], int entity = -1, float angles[3] = {0.0, 0.0, 0.0}, bool resetparticles = false)
+{
+	int tblidx = FindStringTable("ParticleEffectNames");
+
+	char tmp[256];
+	int stridx = INVALID_STRING_INDEX;
+
+	for (int i = 0; i < GetStringTableNumStrings(tblidx); i++)
+	{
+		ReadStringTable(tblidx, i, tmp, sizeof(tmp));
+		if (StrEqual(tmp, name, false))
+		{
+			stridx = i;
+			break;
+		}
+	}
+
+	TE_Start("TFParticleEffect");
+	TE_WriteFloat("m_vecOrigin[0]", origin[0]);
+	TE_WriteFloat("m_vecOrigin[1]", origin[1]);
+	TE_WriteFloat("m_vecOrigin[2]", origin[2]);
+	TE_WriteVector("m_vecAngles", angles);
+	TE_WriteNum("m_iParticleSystemIndex", stridx);
+	TE_WriteNum("entindex", entity);
+	TE_WriteNum("m_iAttachType", 5);
+	TE_WriteNum("m_bResetParticles", resetparticles);
+	TE_SendToAll();
+}
+
+stock void TF2_ParticleById(int stridx, float origin[3], int entity = -1, float angles[3] = {0.0, 0.0, 0.0}, bool resetparticles = false)
+{
+	if (stridx == INVALID_STRING_INDEX)
+		return;
+
+	TE_Start("TFParticleEffect");
+	TE_WriteFloat("m_vecOrigin[0]", origin[0]);
+	TE_WriteFloat("m_vecOrigin[1]", origin[1]);
+	TE_WriteFloat("m_vecOrigin[2]", origin[2]);
+	TE_WriteVector("m_vecAngles", angles);
+	TE_WriteNum("m_iParticleSystemIndex", stridx);
+	TE_WriteNum("entindex", entity);
+	TE_WriteNum("m_iAttachType", 5);
+	TE_WriteNum("m_bResetParticles", resetparticles);
+	TE_SendToAll();
 }

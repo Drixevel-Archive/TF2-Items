@@ -9,7 +9,7 @@
 #define PLUGIN_DESCRIPTION "A simple and effective TF2 items plugin which allows for items, weapons and cosmetic customizations."
 #define PLUGIN_VERSION "1.0.9"
 
-#define EF_NODRAW 32
+#define EF_NODRAW 0x020
 
 #define ARRAY_SIZE	2
 #define ARRAY_ITEM	0
@@ -1489,13 +1489,13 @@ int GiveItem(int client, const char[] name, bool message = false, bool inspect =
 	g_ItemClip.GetValue(name, clip);
 
 	if (clip != -1)
-		SetClip(entity, clip);
+		SetWeaponClip(entity, clip);
 
 	int ammo;
 	g_ItemAmmo.GetValue(name, ammo);
 
 	if (ammo != -1)
-		SetAmmo(client, entity, ammo);
+		SetWeaponAmmo(client, entity, ammo);
 
 	if (class == TFClass_Engineer)
 	{
@@ -2205,13 +2205,14 @@ public void TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int item
 public Action Timer_CacheData(Handle timer, DataPack pack)
 {
 	pack.Reset();
+
 	int client = GetClientOfUserId(pack.ReadCell());
 	int entityIndex = EntRefToEntIndex(pack.ReadCell());
 	
 	if (client > 0 && IsValidEntity(entityIndex))
 	{
-		g_ItemsData[entityIndex].mag = GetClip(entityIndex);
-		g_ItemsData[entityIndex].ammo = GetAmmo(client, entityIndex);
+		g_ItemsData[entityIndex].mag = GetWeaponClip(entityIndex);
+		g_ItemsData[entityIndex].ammo = GetWeaponAmmo(client, entityIndex);
 	}
 }
 

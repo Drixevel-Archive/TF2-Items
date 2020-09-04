@@ -7,7 +7,7 @@
 //Defines
 #define PLUGIN_NAME "[TF2] Items"
 #define PLUGIN_DESCRIPTION "A simple and effective TF2 items plugin which allows for items, weapons and cosmetic customizations."
-#define PLUGIN_VERSION "1.0.9"
+#define PLUGIN_VERSION "1.1.0"
 
 #define EF_NODRAW 0x020
 
@@ -1534,9 +1534,25 @@ int GiveItem(int client, const char[] name, bool message = false, bool inspect =
 		KeyValues kv = new KeyValues("inspect_weapon");
 		kv.SetSectionName("+inspect_server");
 		FakeClientCommandKeyValues(client, kv);
+		
+		CreateTimer(0.2, Timer_EndInspectAnim, GetClientUserId(client));
 	}
 
 	return entity;
+}
+
+public Action Timer_EndInspectAnim(Handle timer, any data)
+{
+	int client;
+
+	if ((client = GetClientOfUserId(data)) == 0 || !IsClientInGame(client) || !IsPlayerAlive(client))
+		return Plugin_Continue;
+	
+	KeyValues kv = new KeyValues("inspect_weapon");
+	kv.SetSectionName("-inspect_server");
+	FakeClientCommandKeyValues(client, kv);
+
+	return Plugin_Continue;
 }
 
 void AttachViewmodel(int client, TFClassType class, int item, char[] viewmodel, int index)
